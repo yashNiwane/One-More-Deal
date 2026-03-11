@@ -87,7 +87,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         : (p.carpetArea != null ? '${p.carpetArea} SqFt' : (p.builtUpArea != null ? '${p.builtUpArea} SqFt' : null));
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(20),
@@ -97,64 +97,76 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         border: Border.all(color: p.isExpired ? AppColors.error.withOpacity(0.3) : AppColors.lightGray.withOpacity(0.6), width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Row 1: Header (Price + Badges)
+            // Redesigned Header: Date on Left, Badges on Right
             Row(
-               crossAxisAlignment: CrossAxisAlignment.center,
-               children: [
-                 if (p.price != null)
-                   Expanded(
-                     child: Text(
-                       '₹${NumberFormat.decimalPattern('en_IN').format(p.price)}${p.listingType == ListingType.rent ? ' / mo' : ''}',
-                       style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.charcoal),
-                       maxLines: 1,
-                       overflow: TextOverflow.ellipsis,
-                     ),
-                   )
-                 else
-                   const Expanded(child: SizedBox.shrink()),
-                 
-                 Container(
-                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                   decoration: BoxDecoration(
-                     color: p.isExpired ? AppColors.error.withOpacity(0.1) : AppColors.primary.withOpacity(0.1),
-                     borderRadius: BorderRadius.circular(6),
-                   ),
-                   child: Text(
-                     p.listingType.value,
-                     style: GoogleFonts.plusJakartaSans(
-                       fontSize: 10,
-                       fontWeight: FontWeight.bold,
-                       color: p.isExpired ? AppColors.error : AppColors.primary,
-                     ),
-                   ),
-                 ),
-               ],
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(Icons.access_time_filled, size: 14, color: AppColors.mediumGray.withOpacity(0.6)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Posted ${DateFormat("MMM d").format(p.refreshedAt ?? p.postedAt ?? DateTime.now())}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.mediumGray, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: p.isExpired ? AppColors.error.withOpacity(0.12) : AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    p.listingType.value.toUpperCase(),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: p.isExpired ? AppColors.error : AppColors.primary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            
-            const SizedBox(height: 8),
-            
-            // Row 2: Title
+            const SizedBox(height: 14),
+
+            // Redesigned Price
+            if (p.price != null)
+              Text(
+                '₹${NumberFormat.decimalPattern('en_IN').format(p.price)}${p.listingType == ListingType.rent ? ' / mo' : ''}',
+                style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.charcoal, height: 1.1),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            if (p.price != null) const SizedBox(height: 6),
+
+            // Redesigned Title
             Text(
               p.societyName ?? p.category.value,
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.charcoal),
+              style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.charcoal),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 2),
             
-            // Row 3: Location
+            const SizedBox(height: 6),
+            
+            // Location
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.location_on_outlined, size: 13, color: AppColors.mediumGray),
-                const SizedBox(width: 4),
+                const Icon(Icons.location_on_outlined, size: 14, color: AppColors.mediumGray),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     p.subarea != null && p.subarea!.isNotEmpty ? '${p.subarea}, ${p.area}, ${p.city}' : '${p.area}, ${p.city}',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.mediumGray, fontWeight: FontWeight.w500),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.mediumGray, fontWeight: FontWeight.w500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -162,43 +174,41 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               ],
             ),
             
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             
-            // Row 4: Metrics Wrap
+            // Redesigned Metrics Wrap (Clean Icons + Text)
             Wrap(
-              spacing: 8,
-              runSpacing: 6,
+              spacing: 16,
+              runSpacing: 12,
               children: [
                 if (p.flatType != null && p.flatType!.isNotEmpty)
                   _buildMiniMetric(Icons.king_bed_outlined, p.flatType!),
-                if (areaStr != null)
+                if (areaStr != null)  
                   _buildMiniMetric(Icons.square_foot_outlined, areaStr),
                 if (p.furnishingStatus != null && p.furnishingStatus!.isNotEmpty)
                   _buildMiniMetric(Icons.chair_outlined, p.furnishingStatus!),
                 if (p.parking != null && p.parking!.isNotEmpty && p.parking != 'Not available')
                   _buildMiniMetric(Icons.directions_car_outlined, p.parking!),
                 if (p.floorCategory != null)
-                  _buildMiniMetric(Icons.layers_outlined, '${p.floorCategory!.value} Floor'),
+                  _buildMiniMetric(Icons.layers_outlined, '${p.floorCategory!.value} Flr'),
               ],
             ),
             
-            const SizedBox(height: 10),
-            const Divider(height: 1, color: AppColors.lightGray),
-            const SizedBox(height: 6),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.lightGray, thickness: 0.5),
+            const SizedBox(height: 12),
             
             // Footer: Expiry & Actions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Flexible(
-                  child: Text(
-                    p.isExpired ? 'Expired' : 'Expires in ${p.daysUntilDelete} days',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      color: p.isExpired ? AppColors.error : AppColors.mediumGray,
-                      fontWeight: p.isExpired ? FontWeight.bold : FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                Text(
+                  p.isExpired ? 'Expired' : 'Expires in ${p.daysUntilDelete}d',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: p.isExpired ? AppColors.error : AppColors.mediumGray,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Row(
@@ -206,17 +216,17 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   children: [
                     TextButton.icon(
                       onPressed: () => _refreshProperty(p),
-                      icon: const Icon(Icons.refresh, size: 14),
-                      label: Text('Refresh', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600)),
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: Text('Refresh', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                     const SizedBox(width: 4),
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.accent),
+                      icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.accent),
                       onPressed: () async {
                         final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => EditPropertyScreen(property: p)));
                         if (result == true) _loadProperties();
@@ -226,7 +236,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
                       onPressed: () => _deleteProperty(p),
                       constraints: const BoxConstraints(),
                       padding: const EdgeInsets.all(4),
@@ -243,19 +253,18 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
 
   Widget _buildMiniMetric(IconData icon, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.offWhite,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.lightGray.withOpacity(0.5)),
+        color: AppColors.lightGray.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 13, color: AppColors.primary),
-          const SizedBox(width: 4),
-          Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.charcoal)),
+          Icon(icon, size: 13, color: AppColors.charcoal.withOpacity(0.7)),
+          const SizedBox(width: 6),
+          Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.charcoal.withOpacity(0.9))),
         ],
       ),
     );

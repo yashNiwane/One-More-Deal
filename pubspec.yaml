@@ -43,7 +43,7 @@ dependencies:
   razorpay_flutter: ^1.4.1
   intl: ^0.20.2
   url_launcher: ^6.3.2
-  font_awesome_flutter: ^10.12.0
+  font_awesome_flutter: ^10.8.0
   connectivity_plus: ^7.0.0
 
 dev_dependencies:
