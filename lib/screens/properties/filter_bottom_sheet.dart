@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
 import '../../models/property_model.dart';
 import '../../services/property_service.dart';
-import '../../widgets/gradient_button.dart';
 
 class FilterBottomSheet extends StatefulWidget {
   final PropertyFilter currentFilter;
@@ -38,7 +37,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       listingType: widget.currentFilter.listingType,
       floorCategory: widget.currentFilter.floorCategory,
       flatType: widget.currentFilter.flatType,
-      parking: widget.currentFilter.parking,
       userTypeFilter: widget.currentFilter.userTypeFilter,
       minPrice: widget.currentFilter.minPrice,
       maxPrice: widget.currentFilter.maxPrice,
@@ -47,6 +45,15 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     _societyCtrl.text = _filter.society ?? '';
     _minPriceCtrl.text = _filter.minPrice?.toStringAsFixed(0) ?? '';
     _maxPriceCtrl.text = _filter.maxPrice?.toStringAsFixed(0) ?? '';
+  }
+
+  @override
+  void dispose() {
+    _areaCtrl.dispose();
+    _societyCtrl.dispose();
+    _minPriceCtrl.dispose();
+    _maxPriceCtrl.dispose();
+    super.dispose();
   }
 
   void _applyFilters() {
@@ -69,173 +76,238 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     });
   }
 
-  Widget _buildSectionTitle(String title) {
+  // ── helpers ──
+
+  Widget _sectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 12),
+      padding: const EdgeInsets.only(top: 20, bottom: 8, left: 2),
       child: Text(
         title,
-        style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.charcoal),
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.iosSecondaryLabel,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }
 
-  Widget _buildChipSelector<T>({
+  Widget _chipGroup<T>({
     required List<T> items,
-    required T? selectedItem,
-    required String Function(T) labelBuilder,
-    required void Function(T?) onSelected,
+    required T? selected,
+    required String Function(T) label,
+    required void Function(T?) onTap,
+    Color? activeColor,
   }) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: items.map((item) {
-        final isSelected = selectedItem == item;
-        return ChoiceChip(
-          label: Text(labelBuilder(item)),
-          selected: isSelected,
-          onSelected: (selected) => onSelected(selected ? item : null),
-          selectedColor: AppColors.primary,
-          backgroundColor: AppColors.lightGray,
-          labelStyle: TextStyle(color: isSelected ? AppColors.white : AppColors.charcoal, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+        final sel = selected == item;
+        final color = activeColor ?? AppColors.iosSystemBlue;
+        return GestureDetector(
+          onTap: () => onTap(sel ? null : item),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: sel ? color : AppColors.iosCardBg,
+              borderRadius: BorderRadius.circular(20),
+              border: sel ? null : Border.all(color: AppColors.iosSeparator.withValues(alpha: 0.5)),
+            ),
+            child: Text(
+              label(item),
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: sel ? FontWeight.w600 : FontWeight.w500,
+                color: sel ? AppColors.white : AppColors.charcoal,
+              ),
+            ),
+          ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _textField(TextEditingController ctrl, String hint, {bool isNumber = false}) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      style: GoogleFonts.inter(fontSize: 14, color: AppColors.charcoal),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.inter(color: AppColors.iosTertiaryLabel, fontSize: 13),
+        filled: true,
+        fillColor: AppColors.iosCardBg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AppColors.iosSystemBlue, width: 1.5),
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.85,
+      initialChildSize: 0.9,
       maxChildSize: 0.95,
       minChildSize: 0.5,
       expand: false,
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            color: AppColors.iosGroupedBg,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
           ),
           child: Column(
             children: [
-              // Header
+              // Drag handle
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppColors.lightGray, width: 1)),
+                margin: const EdgeInsets.only(top: 8),
+                width: 36, height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.iosSeparator,
+                  borderRadius: BorderRadius.circular(3),
                 ),
+              ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Filters', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.charcoal)),
-                    TextButton(
-                      onPressed: _clearFilters,
-                      child: Text('Reset', style: GoogleFonts.plusJakartaSans(color: AppColors.error, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Filter',
+                      style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.charcoal, letterSpacing: -0.5),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: _clearFilters,
+                      child: Text('Reset All', style: GoogleFonts.inter(color: AppColors.iosSystemBlue, fontWeight: FontWeight.w600, fontSize: 14)),
                     ),
                   ],
                 ),
               ),
+              Container(height: 0.5, color: AppColors.iosSeparator.withValues(alpha: 0.4)),
 
-              // Scrollable content
+              // Scrollable filters
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                   children: [
-                    // Location Filters
-                    _buildSectionTitle('Location'),
-                    // City is fixed to Pune
+
+                    // 1. City (fixed)
+                    _sectionHeader('CITY'),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.offWhite,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(color: AppColors.iosCardBg, borderRadius: BorderRadius.circular(10)),
                       child: Row(
                         children: [
-                          const Icon(Icons.location_city, size: 18, color: AppColors.mediumGray),
+                          Icon(Icons.location_city_rounded, size: 16, color: AppColors.iosSecondaryLabel),
                           const SizedBox(width: 8),
-                          Text('Pune', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.charcoal)),
+                          Text('Pune', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.charcoal)),
+                          const Spacer(),
+                          Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.iosTertiaryLabel),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    // Area autocomplete search
+
+                    // 2. Area
+                    _sectionHeader('AREA / LOCALITY'),
                     _buildAreaAutocomplete(),
-                    const SizedBox(height: 12),
-                    _buildTextField(_societyCtrl, 'Building / Society Name'),
 
-                    // Category
-                    _buildSectionTitle('Property Category'),
-                    _buildChipSelector<PropertyCategory>(
-                      items: PropertyCategory.values.where((c) => c != PropertyCategory.plot).toList(),
-                      selectedItem: _filter.category,
-                      labelBuilder: (c) => c.value,
-                      onSelected: (val) => setState(() => _filter.category = val),
+                    // 3. Society / Building
+                    _sectionHeader('SOCIETY / BUILDING'),
+                    _textField(_societyCtrl, 'e.g. Amanora, Marvel Brisa…'),
+
+                    // 4. Property Category — Builder / Broker
+                    _sectionHeader('PROPERTY CATEGORY'),
+                    _chipGroup<UserTypeFilter>(
+                      items: UserTypeFilter.values,
+                      selected: _filter.userTypeFilter,
+                      label: (u) => u == UserTypeFilter.builder ? '🏗 Builder' : '🤝 Broker',
+                      activeColor: _filter.userTypeFilter == UserTypeFilter.builder
+                          ? const Color(0xFFE69A1A)
+                          : AppColors.iosSystemBlue,
+                      onTap: (val) => setState(() => _filter.userTypeFilter = val),
                     ),
 
-                    // Listing Type
-                    _buildSectionTitle('Listing Type'),
-                    _buildChipSelector<ListingType>(
-                      items: ListingType.values,
-                      selectedItem: _filter.listingType,
-                      labelBuilder: (t) => t.value,
-                      onSelected: (val) => setState(() => _filter.listingType = val),
+                    // 5. Subcategory — Residential / Commercial
+                    _sectionHeader('SUBCATEGORY'),
+                    _chipGroup<PropertyCategory>(
+                      items: [PropertyCategory.residential, PropertyCategory.commercial],
+                      selected: _filter.category,
+                      label: (c) => c.value,
+                      onTap: (val) => setState(() => _filter.category = val),
                     ),
 
-                    // BHK
-                    _buildSectionTitle('BHK Configuration'),
-                    _buildChipSelector<String>(
+                    _sectionHeader('LISTING TYPE'),
+                    _chipGroup<ListingType>(
+                      items: ListingType.values.where((t) => t != ListingType.newLaunch).toList(),
+                      selected: _filter.listingType,
+                      label: (t) => t.value,
+                      onTap: (val) => setState(() => _filter.listingType = val),
+                    ),
+
+                    // 7. BHK Config
+                    _sectionHeader('BHK / CONFIGURATION'),
+                    _chipGroup<String>(
                       items: ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow', 'Shop', 'Office'],
-                      selectedItem: _filter.flatType,
-                      labelBuilder: (t) => t,
-                      onSelected: (val) => setState(() => _filter.flatType = val),
+                      selected: _filter.flatType,
+                      label: (t) => t,
+                      onTap: (val) => setState(() => _filter.flatType = val),
                     ),
 
-                    // Floor
-                    _buildSectionTitle('Floor Category'),
-                    _buildChipSelector<FloorCategory>(
+                    // 8. Floor
+                    _sectionHeader('FLOOR'),
+                    _chipGroup<FloorCategory>(
                       items: FloorCategory.values,
-                      selectedItem: _filter.floorCategory,
-                      labelBuilder: (t) => t.value,
-                      onSelected: (val) => setState(() => _filter.floorCategory = val),
+                      selected: _filter.floorCategory,
+                      label: (f) => f.value,
+                      onTap: (val) => setState(() => _filter.floorCategory = val),
                     ),
 
-                    // Parking
-                    _buildSectionTitle('Parking'),
-                    _buildChipSelector<String>(
-                      items: ['Open', 'Covered', 'Not available'],
-                      selectedItem: _filter.parking,
-                      labelBuilder: (t) => t,
-                      onSelected: (val) => setState(() => _filter.parking = val),
-                    ),
-
-                    // Price Range
-                    _buildSectionTitle('Price Range'),
+                    // 9. Price Range
+                    _sectionHeader('PRICE RANGE'),
                     Row(
                       children: [
-                        Expanded(child: _buildTextField(_minPriceCtrl, 'Min Price', isNumber: true)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildTextField(_maxPriceCtrl, 'Max Price', isNumber: true)),
+                        Expanded(child: _textField(_minPriceCtrl, 'Min price', isNumber: true)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text('—', style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel, fontSize: 16)),
+                        ),
+                        Expanded(child: _textField(_maxPriceCtrl, 'Max price', isNumber: true)),
                       ],
                     ),
-                    
-                    const SizedBox(height: 40),
+
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
 
-              // Bottom Actions
+              // Apply button
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), offset: const Offset(0, -4), blurRadius: 10),
-                  ],
+                  color: AppColors.iosGroupedBg,
+                  border: Border(top: BorderSide(color: AppColors.iosSeparator.withValues(alpha: 0.3))),
                 ),
-                child: GradientButton(
-                  label: 'Apply Filters',
-                  onPressed: _applyFilters,
+                child: SafeArea(
+                  top: false,
+                  child: GestureDetector(
+                    onTap: _applyFilters,
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(color: AppColors.iosSystemBlue, borderRadius: BorderRadius.circular(14)),
+                      alignment: Alignment.center,
+                      child: Text('Apply Filters', style: GoogleFonts.inter(color: AppColors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -248,54 +320,52 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   Widget _buildAreaAutocomplete() {
     return Autocomplete<String>(
       initialValue: TextEditingValue(text: _areaCtrl.text),
-      optionsBuilder: (TextEditingValue textEditingValue) async {
-        if (textEditingValue.text.length < 2) {
-          return const Iterable<String>.empty();
-        }
-        final results = await PropertyService.searchCityAreas(textEditingValue.text);
-        return results;
+      optionsBuilder: (TextEditingValue val) async {
+        if (val.text.length < 2) return const Iterable<String>.empty();
+        return await PropertyService.searchCityAreas(val.text);
       },
-      onSelected: (String selection) {
-        _areaCtrl.text = selection;
-      },
-      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-        controller.addListener(() {
-          _areaCtrl.text = controller.text;
-        });
+      onSelected: (s) => _areaCtrl.text = s,
+      fieldViewBuilder: (ctx, ctrl, focusNode, onSubmit) {
+        ctrl.text = _areaCtrl.text;
+        ctrl.addListener(() => _areaCtrl.text = ctrl.text);
         return TextField(
-          controller: controller,
+          controller: ctrl,
           focusNode: focusNode,
+          style: GoogleFonts.inter(fontSize: 14, color: AppColors.charcoal),
           decoration: InputDecoration(
-            hintText: 'Search Area (type 2+ letters)',
-            prefixIcon: const Icon(Icons.search, color: AppColors.mediumGray),
+            hintText: 'Search area (2+ letters)',
+            hintStyle: GoogleFonts.inter(color: AppColors.iosTertiaryLabel, fontSize: 13),
+            prefixIcon: Icon(Icons.search_rounded, color: AppColors.iosSecondaryLabel, size: 18),
             filled: true,
-            fillColor: AppColors.offWhite,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
+            fillColor: AppColors.iosCardBg,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppColors.iosSystemBlue, width: 1.5),
+            ),
           ),
         );
       },
-      optionsViewBuilder: (context, onSelected, options) {
+      optionsViewBuilder: (ctx, onSelected, options) {
         return Align(
           alignment: Alignment.topLeft,
           child: Material(
             elevation: 4,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
+              constraints: const BoxConstraints(maxHeight: 180, maxWidth: 300),
               child: ListView.builder(
                 padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options.elementAt(index);
+                itemBuilder: (_, i) {
+                  final opt = options.elementAt(i);
                   return ListTile(
                     dense: true,
-                    leading: const Icon(Icons.location_on_outlined, size: 18, color: AppColors.accent),
-                    title: Text(option, style: GoogleFonts.plusJakartaSans(fontSize: 14)),
-                    onTap: () => onSelected(option),
+                    leading: Icon(Icons.location_on_outlined, size: 16, color: AppColors.iosSystemBlue),
+                    title: Text(opt, style: GoogleFonts.inter(fontSize: 14)),
+                    onTap: () => onSelected(opt),
                   );
                 },
               ),
@@ -303,20 +373,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildTextField(TextEditingController ctrl, String hint, {bool isNumber = false}) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(
-        hintText: hint,
-        filled: true,
-        fillColor: AppColors.offWhite,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      ),
     );
   }
 }

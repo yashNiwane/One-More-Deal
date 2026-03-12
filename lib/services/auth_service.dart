@@ -159,15 +159,27 @@ class AuthService {
       if (user == null) return false;
       _currentUser = user; // keep in sync
 
-      if (user.isTrial) return true;
+      if (user.isTrial) {
+        debugPrint('[AUTH] hasActiveSubscription -> isTrial true (days left: \${user.trialDaysLeft})');
+        return true;
+      }
 
       final sub = await DatabaseService.instance.getActiveSubscription(user.id);
-      if (sub != null && sub.isValid) return true;
+      if (sub != null && sub.isValid) {
+        debugPrint('[AUTH] hasActiveSubscription -> sub valid');
+        return true;
+      }
 
+      debugPrint('[AUTH] hasActiveSubscription -> NO active sub & NO trial');
+      if (user.isActive) {
+        debugPrint('[AUTH] Auto-deactivating expired user: \${user.phone}');
+        await DatabaseService.instance.deactivateUser(user.phone);
+      }
+      
       return false;
-    } catch (_) {
-      // Network errors should not block the user — they already passed the gate on init
-      return true;
+    } catch (e, st) {
+      debugPrint('[AUTH] hasActiveSubscription Error: $e\n$st');
+      return false; // Security fix: Do not default to true on errors
     }
   }
 

@@ -1,0 +1,8 @@
+User ID: 9 | is_active: false
+Property ID: 28 | is_visible: true | is_deleted: false | auto_delete_at: 2026-05-11 18:16:23.979875Z | current_time: 2026-03-12 18:20:16.327949Z
+Property ID: 32 | is_visible: true | is_deleted: false | auto_delete_at: 2026-05-11 18:16:27.859874Z | current_time: 2026-03-12 18:20:16.327949Z
+Property ID: 27 | is_visible: true | is_deleted: false | auto_delete_at: 2026-04-11 18:16:30.819912Z | current_time: 2026-03-12 18:20:16.327949Z
+Property ID: 7 | is_visible: true | is_deleted: false | auto_delete_at: 2026-05-11 18:16:32.729859Z | current_time: 2026-03-12 18:20:16.327949Z
+Property ID: 4 | is_visible: true | is_deleted: false | auto_delete_at: 2026-05-11 18:16:37.159884Z | current_time: 2026-03-12 18:20:16.327949Z
+Property ID: 5 | is_visible: true | is_deleted: false | auto_delete_at: 2026-04-11 18:16:42.489863Z | current_time: 2026-03-12 18:20:16.327949Z
+Property ID: 6 | is_visible: true | is_deleted: false | auto_delete_at: 2026-04-11 18:16:46.424881Z | current_time: 2026-03-12 18:20:16.327949Z

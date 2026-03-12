@@ -12,6 +12,7 @@ import '../../services/database_service.dart';
 import '../../widgets/gradient_button.dart';
 import 'profile_setup_screen.dart';
 import '../home_screen.dart';
+import '../subscription_screen.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String phone;
@@ -128,7 +129,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
             ),
           );
         } else {
-          _navigateToHome();
+          await _navigateToHome();
         }
       } catch (e) {
         if (!mounted) return;
@@ -147,9 +148,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
     }
   }
 
-  void _navigateToHome() {
+  Future<void> _navigateToHome() async {
+    final hasSub = await AuthService.hasActiveSubscription();
+    if (!mounted) return;
+    
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) => hasSub ? const HomeScreen() : const SubscriptionScreen()),
       (_) => false,
     );
   }

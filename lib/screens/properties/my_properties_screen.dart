@@ -43,12 +43,12 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     try {
       await PropertyService.refreshProperty(p.id!, AuthService.currentUserId!, p.listingType);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Listing Refreshed!'), backgroundColor: AppColors.primary),
+        const SnackBar(content: Text('Listing Refreshed!'), backgroundColor: AppColors.iosSystemGreen),
       );
       _loadProperties();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.iosDestructive),
       );
     }
   }
@@ -57,11 +57,18 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Property?'),
-        content: const Text('Are you sure you want to delete this listing? It will no longer be visible.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text('Delete Property?', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        content: Text('This listing will no longer be visible.', style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CANCEL')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('DELETE', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: GoogleFonts.inter(color: AppColors.iosSystemBlue, fontWeight: FontWeight.w600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete', style: GoogleFonts.inter(color: AppColors.iosDestructive, fontWeight: FontWeight.w600)),
+          ),
         ],
       ),
     );
@@ -71,12 +78,12 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     try {
       await PropertyService.deleteProperty(p.id!, AuthService.currentUserId!);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Listing Deleted'), backgroundColor: AppColors.primary),
+        const SnackBar(content: Text('Listing Deleted'), backgroundColor: AppColors.iosSystemGreen),
       );
       _loadProperties();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.iosDestructive),
       );
     }
   }
@@ -87,162 +94,120 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         : (p.carpetArea != null ? '${p.carpetArea} SqFt' : (p.builtUpArea != null ? '${p.builtUpArea} SqFt' : null));
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.iosCardBg,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2)),
         ],
-        border: Border.all(color: p.isExpired ? AppColors.error.withOpacity(0.3) : AppColors.lightGray.withOpacity(0.6), width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Redesigned Header: Date on Left, Badges on Right
+            // Header
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(Icons.access_time_filled, size: 14, color: AppColors.mediumGray.withOpacity(0.6)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Posted ${DateFormat("MMM d").format(p.refreshedAt ?? p.postedAt ?? DateTime.now())}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.mediumGray, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: p.isExpired ? AppColors.error.withOpacity(0.12) : AppColors.primary.withOpacity(0.12),
+                    color: p.isExpired ? AppColors.iosDestructive.withOpacity(0.1) : AppColors.iosSystemBlue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     p.listingType.value.toUpperCase(),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: p.isExpired ? AppColors.error : AppColors.primary,
-                      letterSpacing: 0.5,
+                    style: GoogleFonts.inter(
+                      fontSize: 10, fontWeight: FontWeight.w700,
+                      color: p.isExpired ? AppColors.iosDestructive : AppColors.iosSystemBlue,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ),
+                const Spacer(),
+                Text(
+                  DateFormat("MMM d").format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
+                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.iosSecondaryLabel),
+                ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
-            // Redesigned Price
+            // Price
             if (p.price != null)
               Text(
                 '₹${NumberFormat.decimalPattern('en_IN').format(p.price)}${p.listingType == ListingType.rent ? ' / mo' : ''}',
-                style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.charcoal, height: 1.1),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.charcoal, letterSpacing: -0.5),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
               ),
             if (p.price != null) const SizedBox(height: 6),
 
-            // Redesigned Title
+            // Title
             Text(
               p.societyName ?? p.category.value,
-              style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.charcoal),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.charcoal, letterSpacing: -0.2),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
             ),
-            
-            const SizedBox(height: 6),
-            
+            const SizedBox(height: 4),
+
             // Location
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(Icons.location_on_outlined, size: 14, color: AppColors.mediumGray),
-                const SizedBox(width: 6),
+                Icon(Icons.location_on_rounded, size: 13, color: AppColors.iosSecondaryLabel),
+                const SizedBox(width: 3),
                 Expanded(
                   child: Text(
                     p.subarea != null && p.subarea!.isNotEmpty ? '${p.subarea}, ${p.area}, ${p.city}' : '${p.area}, ${p.city}',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.mediumGray, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 12, color: AppColors.iosSecondaryLabel),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            
-            const SizedBox(height: 14),
-            
-            // Redesigned Metrics Wrap (Clean Icons + Text)
+            const SizedBox(height: 12),
+
+            // Metrics
             Wrap(
-              spacing: 16,
-              runSpacing: 12,
+              spacing: 12, runSpacing: 8,
               children: [
-                if (p.flatType != null && p.flatType!.isNotEmpty)
-                  _buildMiniMetric(Icons.king_bed_outlined, p.flatType!),
-                if (areaStr != null)  
-                  _buildMiniMetric(Icons.square_foot_outlined, areaStr),
-                if (p.furnishingStatus != null && p.furnishingStatus!.isNotEmpty)
-                  _buildMiniMetric(Icons.chair_outlined, p.furnishingStatus!),
-                if (p.parking != null && p.parking!.isNotEmpty && p.parking != 'Not available')
-                  _buildMiniMetric(Icons.directions_car_outlined, p.parking!),
-                if (p.floorCategory != null)
-                  _buildMiniMetric(Icons.layers_outlined, '${p.floorCategory!.value} Flr'),
+                if (p.flatType != null && p.flatType!.isNotEmpty) _buildChip(p.flatType!),
+                if (areaStr != null) _buildChip(areaStr),
+                if (p.furnishingStatus != null && p.furnishingStatus!.isNotEmpty) _buildChip(p.furnishingStatus!),
+                if (p.parking != null && p.parking!.isNotEmpty && p.parking != 'Not available') _buildChip(p.parking!),
               ],
             ),
-            
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: AppColors.lightGray, thickness: 0.5),
+
+            const SizedBox(height: 14),
+            Container(height: 0.5, color: AppColors.iosSeparator.withOpacity(0.4)),
             const SizedBox(height: 12),
-            
-            // Footer: Expiry & Actions
+
+            // Footer: Expiry + Actions
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                Icon(
+                  p.isExpired ? Icons.error_outline_rounded : Icons.schedule_rounded,
+                  size: 14,
+                  color: p.isExpired ? AppColors.iosDestructive : AppColors.iosSecondaryLabel,
+                ),
+                const SizedBox(width: 4),
                 Text(
                   p.isExpired ? 'Expired' : 'Expires in ${p.daysUntilDelete}d',
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: p.isExpired ? AppColors.error : AppColors.mediumGray,
-                    fontWeight: FontWeight.w600,
+                    color: p.isExpired ? AppColors.iosDestructive : AppColors.iosSecondaryLabel,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _refreshProperty(p),
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: Text('Refresh', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.accent),
-                      onPressed: () async {
-                        final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => EditPropertyScreen(property: p)));
-                        if (result == true) _loadProperties();
-                      },
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(4),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                      onPressed: () => _deleteProperty(p),
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(4),
-                    ),
-                  ],
-                ),
+                const Spacer(),
+                _buildIconAction(Icons.refresh_rounded, AppColors.iosSystemBlue, () => _refreshProperty(p)),
+                const SizedBox(width: 6),
+                _buildIconAction(Icons.edit_rounded, AppColors.accent, () async {
+                  final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => EditPropertyScreen(property: p)));
+                  if (result == true) _loadProperties();
+                }),
+                const SizedBox(width: 6),
+                _buildIconAction(Icons.delete_outline_rounded, AppColors.iosDestructive, () => _deleteProperty(p)),
               ],
             ),
           ],
@@ -251,21 +216,27 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     );
   }
 
-  Widget _buildMiniMetric(IconData icon, String value) {
+  Widget _buildChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.lightGray.withOpacity(0.3),
+        color: AppColors.iosGroupedBg,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon, size: 13, color: AppColors.charcoal.withOpacity(0.7)),
-          const SizedBox(width: 6),
-          Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.charcoal.withOpacity(0.9))),
-        ],
+      child: Text(text, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.darkGray)),
+    );
+  }
+
+  Widget _buildIconAction(IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: color),
       ),
     );
   }
@@ -273,45 +244,75 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.offWhite,
-      appBar: AppBar(
-        title: Text('My Properties', style: GoogleFonts.plusJakartaSans(color: AppColors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.primary,
-        iconTheme: const IconThemeData(color: AppColors.white),
+      backgroundColor: AppColors.iosGroupedBg,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 86, right: 4), // Added extra margin for bottom nav bar
+        child: FloatingActionButton(
+          backgroundColor: AppColors.iosSystemBlue,
+          foregroundColor: AppColors.white,
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+            );
+            if (result == true) _loadProperties();
+          },
+          child: const Icon(Icons.add_rounded, size: 28),
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.accent,
-        icon: const Icon(Icons.add, color: AppColors.white),
-        label: Text('Post Property', style: GoogleFonts.plusJakartaSans(color: AppColors.white, fontWeight: FontWeight.w600)),
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
-          );
-          if (result == true) {
-            _loadProperties(); // Reload if new property added
-          }
-        },
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
-          : _properties.isEmpty
-              ? Center(
-                  child: Text(
-                    'You have no properties listed.',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 16, color: AppColors.mediumGray),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadProperties,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16).copyWith(bottom: 80), // padding for FAB
-                    itemCount: _properties.length,
-                    itemBuilder: (context, index) {
-                      return _buildPropertyCard(_properties[index]);
-                    },
-                  ),
+      body: CustomScrollView(
+        slivers: [
+          // ── App Bar with Add button ──
+          SliverAppBar(
+            pinned: true,
+            backgroundColor: AppColors.iosGroupedBg,
+            surfaceTintColor: Colors.transparent,
+            automaticallyImplyLeading: false,
+            title: Text(
+              'My Listings',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.charcoal,
+                letterSpacing: -0.3,
+              ),
+            ),
+            // Add button moved to FloatingActionButton
+          ),
+
+          // ── Body ──
+          if (_isLoading)
+            const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator.adaptive()),
+            )
+          else if (_properties.isEmpty)
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.home_work_outlined, size: 56, color: AppColors.iosTertiaryLabel),
+                    const SizedBox(height: 16),
+                    Text('No listings yet', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.charcoal)),
+                    const SizedBox(height: 6),
+                    Text('Tap + to add your first property', style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel, fontSize: 14)),
+                  ],
                 ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildPropertyCard(_properties[index]),
+                childCount: _properties.length,
+              ),
+            ),
+
+          const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+        ],
+      ),
     );
   }
 }

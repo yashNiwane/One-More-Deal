@@ -1,0 +1,19 @@
+id | nextval('users_id_seq'::regclass) | integer
+is_active | true | boolean
+trial_days | 30 | integer
+trial_ends_at | (now() + '30 days'::interval) | timestamp with time zone
+last_login_at | NULL | timestamp with time zone
+created_at | now() | timestamp with time zone
+updated_at | now() | timestamp with time zone
+current_session_token | NULL | character varying
+company_name | NULL | character varying
+phone | NULL | character varying
+name | NULL | character varying
+user_type | NULL | character varying
+city | NULL | character varying
+operating_areas | NULL | character varying
+user_code | NULL | character varying
+
+-- TRIGGERS --
+set_user_code -> EXECUTE FUNCTION generate_user_code()
+set_user_code -> EXECUTE FUNCTION generate_user_code()

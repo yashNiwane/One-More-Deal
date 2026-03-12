@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
-import '../core/app_constants.dart';
 
 class GradientButton extends StatefulWidget {
   final String label;
@@ -18,7 +18,7 @@ class GradientButton extends StatefulWidget {
     this.isLoading = false,
     this.icon,
     this.gradient,
-    this.height = 54,
+    this.height = 50,
     this.borderRadius = 14,
   });
 
@@ -37,7 +37,7 @@ class _GradientButtonState extends State<GradientButton>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 100),
-      lowerBound: 0.95,
+      lowerBound: 0.97,
       upperBound: 1.0,
       value: 1.0,
     );
@@ -71,23 +71,25 @@ class _GradientButtonState extends State<GradientButton>
           height: widget.height,
           width: double.infinity,
           decoration: BoxDecoration(
-            gradient: widget.gradient ?? AppColors.goldGradient,
+            gradient: widget.gradient ?? const LinearGradient(
+              colors: [AppColors.iosSystemBlue, Color(0xFF0056D2)],
+            ),
             borderRadius: BorderRadius.circular(widget.borderRadius),
             boxShadow: [
               BoxShadow(
-                color: AppColors.accent.withOpacity(0.4),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: AppColors.iosSystemBlue.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Center(
             child: widget.isLoading
                 ? const SizedBox(
-                    height: 22,
-                    width: 22,
+                    height: 20,
+                    width: 20,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
+                      strokeWidth: 2,
                       color: AppColors.white,
                     ),
                   )
@@ -100,11 +102,11 @@ class _GradientButtonState extends State<GradientButton>
                       ],
                       Text(
                         widget.label,
-                        style: const TextStyle(
+                        style: GoogleFonts.inter(
                           color: AppColors.white,
                           fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.3,
                         ),
                       ),
                     ],

@@ -7,6 +7,7 @@ import '../../core/app_constants.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
 import '../home_screen.dart';
+import '../subscription_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -54,9 +55,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
 
     if (!mounted) return;
-    // Use direct push to avoid named-route stack issues
+    // Use direct push but still check subscription to prevent bypass
+    final hasSub = await AuthService.hasActiveSubscription();
+    if (!mounted) return;
+    
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) => hasSub ? const HomeScreen() : const SubscriptionScreen()),
       (_) => false,
     );
   }

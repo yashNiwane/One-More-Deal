@@ -164,6 +164,12 @@ class DatabaseService {
         parameters: {'uid': userId},
       );
 
+      // Successfully bought? REACTIVATE the user to restore their properties
+      await (await _db).execute(
+        Sql.named('UPDATE users SET is_active = true WHERE id = @uid'),
+        parameters: {'uid': userId},
+      );
+
       final res = await (await _db).execute(
         Sql.named('''
           INSERT INTO subscriptions (user_id, plan_months, amount_paid, payment_ref,
@@ -404,6 +410,7 @@ class DatabaseService {
       'p.is_visible = true',
       'p.auto_delete_at > NOW()',
       'u.is_active = true',
+      '(u.trial_ends_at > NOW() OR EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.is_active = true AND s.ends_at > NOW()))',
       '(p.is_deleted = false OR p.is_deleted IS NULL)'
     ];
     final params = <String, dynamic>{};

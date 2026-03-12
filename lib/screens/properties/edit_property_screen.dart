@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
 import '../../services/property_service.dart';
 import '../../models/property_model.dart';
-import '../../widgets/gradient_button.dart';
 import 'package:intl/intl.dart';
 
 class EditPropertyScreen extends StatefulWidget {
@@ -25,7 +24,7 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
   String _selectedAreaType = 'Carpet Area';
   DateTime? _availabilityDate;
   String _selectedParking = 'Not available';
-  String? _selectedFurnishing;
+  String _selectedFurnishing = 'Unfurnished';
 
   bool get _isNew => widget.property.category == PropertyCategory.newProperty || widget.property.listingType == ListingType.newLaunch;
   bool get _isRent => widget.property.listingType == ListingType.rent;
@@ -37,7 +36,7 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
     _depositCtrl = TextEditingController(text: widget.property.deposit?.toString() ?? '');
     _subareaCtrl = TextEditingController(text: widget.property.subarea ?? '');
     _selectedParking = widget.property.parking ?? 'Not available';
-    _selectedFurnishing = widget.property.furnishingStatus;
+    _selectedFurnishing = widget.property.furnishingStatus ?? 'Unfurnished';
     
     if (widget.property.builtUpArea != null) {
       _selectedAreaType = 'Built-up Area';
@@ -99,216 +98,233 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
       
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Property updated successfully'), backgroundColor: AppColors.primary),
+        const SnackBar(content: Text('Property updated'), backgroundColor: AppColors.iosSystemGreen),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: \$e'), backgroundColor: AppColors.error),
+        SnackBar(content: Text('Update failed: $e'), backgroundColor: AppColors.iosDestructive),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 18, bottom: 8, top: 26),
+      child: Text(
+        title.toUpperCase(),
+        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.iosSecondaryLabel, letterSpacing: 0.8),
+      ),
+    );
+  }
+
+  Widget _buildGroupedCard(List<Widget> children) {
+    final items = <Widget>[];
+    for (int i = 0; i < children.length; i++) {
+      items.add(children[i]);
+      if (i < children.length - 1) {
+        items.add(Container(height: 0.5, color: AppColors.iosSeparator.withOpacity(0.3), margin: const EdgeInsets.only(left: 16)));
+      }
+    }
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.iosCardBg, 
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 4, offset: const Offset(0, 1)),
+        ],
+      ),
+      child: Column(children: items),
+    );
+  }
+
+  Widget _buildFormField(String label, TextEditingController ctrl, {bool isNumber = false, String? hint}) {
+    return TextFormField(
+      controller: ctrl,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosSecondaryLabel),
+        hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosTertiaryLabel, fontWeight: FontWeight.w400),
+        filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      validator: (val) {
+        if (val == null || val.trim().isEmpty) return '$label is required';
+        return null;
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.offWhite,
+      backgroundColor: AppColors.iosGroupedBg,
       appBar: AppBar(
-        title: Text('Edit Property', style: GoogleFonts.plusJakartaSans(color: AppColors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.primary,
-        iconTheme: const IconThemeData(color: AppColors.white),
+        backgroundColor: AppColors.iosGroupedBg,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('Edit Property', style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.charcoal)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16).copyWith(bottom: 40),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Edit \${widget.property.societyName ?? widget.property.category.value}',
-                style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.charcoal),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'You can only modify the Price, Area, and Availability of an active listing. For other changes, please delete and repost.',
-                style: GoogleFonts.plusJakartaSans(fontSize: 14, color: AppColors.mediumGray),
-              ),
-              const SizedBox(height: 24),
-              
-              if (widget.property.listingType != ListingType.plot)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedAreaType,
-                          decoration: InputDecoration(
-                            labelText: 'Area Type',
-                            filled: true,
-                            fillColor: AppColors.white,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          ),
-                          items: ['Carpet Area', 'Built-up Area']
-                              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedAreaType = val);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 1,
-                        child: TextFormField(
-                          controller: _generalAreaCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Area (SqFt)',
-                            hintText: 'e.g., 1000',
-                            filled: true,
-                            fillColor: AppColors.white,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+              // Info banner
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.iosSystemBlue.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-
-              TextFormField(
-                controller: _subareaCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Subarea (Optional)',
-                  hintText: 'e.g., Sector 4, Phase 1',
-                  filled: true,
-                  fillColor: AppColors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _priceCtrl,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: _isRent ? 'Rent (Monthly)' : 'Price',
-                  filled: true,
-                  fillColor: AppColors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
-                ),
-                validator: (val) {
-                  final label = _isRent ? 'Rent' : 'Price';
-                  if (val == null || val.trim().isEmpty) return '$label is required';
-                  return null;
-                },
-              ),
-              if (_isRent) const SizedBox(height: 16),
-              if (_isRent)
-                TextFormField(
-                  controller: _depositCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Deposit',
-                    filled: true,
-                    fillColor: AppColors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
-                  ),
-                ),
-              if (_isRent) const SizedBox(height: 16),
-
-              if (!_isNew)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _availabilityDate ?? DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (picked != null) {
-                        setState(() => _availabilityDate = picked);
-                      }
-                    },
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Available From',
-                        filled: true,
-                        fillColor: AppColors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 18, color: AppColors.iosSystemBlue),
+                    const SizedBox(width: 10),
+                    Expanded(
                       child: Text(
-                        _availabilityDate != null ? DateFormat('dd MMM yyyy').format(_availabilityDate!) : 'Select Date',
-                        style: TextStyle(color: _availabilityDate != null ? AppColors.charcoal : AppColors.mediumGray),
+                        'Only price, area, and availability can be modified.',
+                        style: GoogleFonts.inter(fontSize: 13, color: AppColors.iosSystemBlue, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Area ──
+              if (widget.property.listingType != ListingType.plot) ...[
+                _buildSectionHeader('AREA'),
+                _buildGroupedCard([
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedAreaType,
+                      style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
+                      decoration: InputDecoration(
+                        labelText: 'Area Type',
+                        labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosSecondaryLabel),
+                        filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none,
+                      ),
+                      items: ['Carpet Area', 'Built-up Area'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                      onChanged: (val) { if (val != null) setState(() => _selectedAreaType = val); },
+                    ),
+                  ),
+                  _buildFormField('Area (SqFt)', _generalAreaCtrl, isNumber: true, hint: 'e.g., 1000'),
+                ]),
+              ],
+
+              // ── Location ──
+              _buildSectionHeader('LOCATION'),
+              _buildGroupedCard([
+                _buildFormField('Subarea', _subareaCtrl, hint: 'e.g., Sector 4'),
+              ]),
+
+              // ── Pricing ──
+              _buildSectionHeader('PRICING'),
+              _buildGroupedCard([
+                _buildFormField(_isRent ? 'Rent (Monthly)' : 'Price', _priceCtrl, isNumber: true),
+                if (_isRent) _buildFormField('Deposit', _depositCtrl, isNumber: true),
+              ]),
+
+              // ── Additional ──
+              if (!_isNew) ...[
+                _buildSectionHeader('ADDITIONAL'),
+                _buildGroupedCard([
+                  GestureDetector(
+                    onTap: () async {
+                      final picked = await showDatePicker(context: context, initialDate: _availabilityDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                      if (picked != null) setState(() => _availabilityDate = picked);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Text('Available From', style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal)),
+                          const Spacer(),
+                          Text(
+                            _availabilityDate != null ? DateFormat('dd MMM yyyy').format(_availabilityDate!) : 'Select',
+                            style: GoogleFonts.inter(fontSize: 15, color: _availabilityDate != null ? AppColors.iosSystemBlue : AppColors.iosSecondaryLabel),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-
-              if (!_isNew && widget.property.listingType != ListingType.plot)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedParking,
-                    decoration: InputDecoration(
-                      labelText: 'Car Parking',
-                      filled: true,
-                      fillColor: AppColors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  if (widget.property.listingType != ListingType.plot) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedParking,
+                        style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
+                        decoration: InputDecoration(
+                          labelText: 'Parking',
+                          labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosSecondaryLabel),
+                          filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none,
+                        ),
+                        items: ['Open', 'Covered', 'Not available'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                        onChanged: (val) { if (val != null) setState(() => _selectedParking = val); },
+                      ),
                     ),
-                    items: ['Open', 'Covered', 'Not available']
-                        .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedParking = val);
-                    },
-                  ),
-                ),
-
-              if (!_isNew && widget.property.listingType != ListingType.plot)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedFurnishing,
-                    decoration: InputDecoration(
-                      labelText: 'Furnishing Status',
-                      filled: true,
-                      fillColor: AppColors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedFurnishing,
+                        style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
+                        decoration: InputDecoration(
+                          labelText: 'Furnishing',
+                          labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosSecondaryLabel),
+                          filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none,
+                        ),
+                        items: ['Full', 'Semi', 'Unfurnished'].map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
+                        onChanged: (val) { if (val != null) setState(() => _selectedFurnishing = val); },
+                      ),
                     ),
-                    items: ['Full', 'Semi', 'Unfurnished']
-                        .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedFurnishing = val);
-                    },
-                  ),
-                ),
+                  ],
+                ]),
+              ],
 
               const SizedBox(height: 32),
 
               _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
-                  : GradientButton(
-                      label: 'Save Changes',
-                      onPressed: _submitEdit,
+                ? const Center(child: CircularProgressIndicator.adaptive())
+                : GestureDetector(
+                    onTap: _submitEdit,
+                    child: Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: AppColors.iosSystemBlue,
+                        gradient: const LinearGradient(
+                          colors: [AppColors.iosSystemBlue, Color(0xFF0A7EEA)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: AppColors.iosSystemBlue.withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_circle_outline_rounded, color: AppColors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Text('Save Changes', style: GoogleFonts.inter(color: AppColors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.3)),
+                        ],
+                      ),
                     ),
+                  ),
             ],
           ),
         ),

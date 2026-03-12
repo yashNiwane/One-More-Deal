@@ -298,7 +298,7 @@ class PropertyFilter {
 
   bool get isEmpty => city == null && area == null && society == null &&
       category == null && listingType == null && floorCategory == null &&
-      flatType == null && parking == null && userTypeFilter == null &&
+      flatType == null && userTypeFilter == null &&
       maxPrice == null && minPrice == null;
 }
 

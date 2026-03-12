@@ -48,4 +48,19 @@ class AppColors {
   // Glass morphism
   static const Color glassWhite = Color(0x1AFFFFFF);
   static const Color glassBorder = Color(0x33FFFFFF);
+
+  // ── iOS / Apple-style design tokens ──────────────────────────────────
+  static const Color iosGroupedBg = Color(0xFFF2F2F7);     // iOS Settings background
+  static const Color iosCardBg = Color(0xFFFFFFFF);         // White card surface
+  static const Color iosSeparator = Color(0xFFC6C6C8);     // iOS thin separator
+  static const Color iosSecondaryLabel = Color(0xFF8E8E93); // iOS secondary text
+  static const Color iosTertiaryLabel = Color(0xFFAEAEB2);  // iOS tertiary text
+  static const Color iosSystemBlue = Color(0xFF007AFF);     // iOS tappable blue
+  static const Color iosDestructive = Color(0xFFFF3B30);    // iOS destructive red
+  static const Color iosSystemGreen = Color(0xFF34C759);    // iOS green
+  static const Color iosFill = Color(0xFFE5E5EA);           // iOS fill color
+
+  // Frosted nav bar
+  static const Color frostedNavBg = Color(0xF0F9F9F9);     // ~94% opaque white
+  static const Color frostedNavBorder = Color(0x33A0A0A0);  // Thin top border
 }

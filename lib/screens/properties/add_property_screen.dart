@@ -4,7 +4,6 @@ import '../../core/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/property_service.dart';
 import '../../models/property_model.dart';
-import '../../widgets/gradient_button.dart';
 import 'package:intl/intl.dart';
 
 class AddPropertyScreen extends StatefulWidget {
@@ -38,7 +37,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   String? _selectedFlatBhk;
   int? _selectedFloor;
   String _selectedParking = 'Not available';
-  String? _selectedFurnishing;
+  String _selectedFurnishing = 'Unfurnished';
   DateTime? _possessionDate;
 
   @override
@@ -60,10 +59,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   Future<void> _submitProperty() async {
     if (!_formKey.currentState!.validate()) return;
     
-    // Validate missing fields that aren't form-controlled automatically
     if (_isNew && _possessionDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a Possession Date'), backgroundColor: AppColors.error),
+        const SnackBar(content: Text('Please select a Possession Date'), backgroundColor: AppColors.iosDestructive),
       );
       return;
     }
@@ -109,109 +107,158 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       if (!mounted) return;
       if (result != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Property added successfully!'), backgroundColor: AppColors.primary),
+          const SnackBar(content: Text('Property added!'), backgroundColor: AppColors.iosSystemGreen),
         );
-        Navigator.pop(context, true); // Return true to refresh parent list
+        Navigator.pop(context, true);
       } else {
         throw Exception('Insert returned null');
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding property: $e'), backgroundColor: AppColors.error),
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.iosDestructive),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false, String? hint, bool isOptional = false}) {
+  // ── iOS-style helpers ──
+
+  Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      padding: const EdgeInsets.only(left: 18, bottom: 8, top: 26),
+      child: Text(
+        title.toUpperCase(), 
+        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.iosSecondaryLabel, letterSpacing: 0.8),
+      ),
+    );
+  }
+
+  Widget _buildFormField(String label, TextEditingController controller, {bool isNumber = false, String? hint, bool isOptional = false}) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosSecondaryLabel),
+        hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosTertiaryLabel, fontWeight: FontWeight.w400),
+        filled: false,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      validator: (val) {
+        if (!isOptional && (val == null || val.trim().isEmpty)) return '$label is required';
+        return null;
+      },
+    );
+  }
+
+  Widget _buildGroupedCard(List<Widget> children) {
+    final items = <Widget>[];
+    for (int i = 0; i < children.length; i++) {
+      items.add(children[i]);
+      if (i < children.length - 1) {
+        items.add(Container(height: 0.5, color: AppColors.iosSeparator.withOpacity(0.3), margin: const EdgeInsets.only(left: 16)));
+      }
+    }
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.iosCardBg, 
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 4, offset: const Offset(0, 1)),
+        ],
+      ),
+      child: Column(children: items),
+    );
+  }
+
+  Widget _buildDropdownField<T>(String label, T? value, List<T> items, String Function(T) labelBuilder, void Function(T?)? onChanged, {String? Function(T?)? validator}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: DropdownButtonFormField<T>(
+        value: value,
+        isExpanded: true,
+        style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
         decoration: InputDecoration(
           labelText: label,
-          hintText: hint,
-          filled: true,
-          fillColor: AppColors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
+          labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosSecondaryLabel),
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
-        validator: (val) {
-          if (!isOptional && (val == null || val.trim().isEmpty)) return '$label is required';
-          return null;
-        },
+        items: items.map((t) => DropdownMenuItem(value: t, child: Text(labelBuilder(t)))).toList(),
+        onChanged: onChanged,
+        validator: validator,
       ),
     );
   }
 
   Widget _buildAreaAutocomplete() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Autocomplete<String>(
-        optionsBuilder: (TextEditingValue textEditingValue) async {
-          if (textEditingValue.text.length < 2) {
-            return const Iterable<String>.empty();
-          }
-          final res = await PropertyService.searchCityAreas(textEditingValue.text);
-          return res;
-        },
-        onSelected: (String selection) {
-          _areaCtrl.text = selection;
-        },
-        fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-          controller.addListener(() {
-            _areaCtrl.text = controller.text;
-          });
-          return TextFormField(
-            controller: controller,
-            focusNode: focusNode,
-            decoration: InputDecoration(
-              labelText: 'Area / Locality',
-              hintText: 'Search area (type 2+ letters)',
-              prefixIcon: const Icon(Icons.search, color: AppColors.mediumGray),
-              filled: true,
-              fillColor: AppColors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accent, width: 2)),
-            ),
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) return 'Area / Locality is required';
-              return null;
-            },
-          );
-        },
-        optionsViewBuilder: (context, onSelected, options) {
-          return Align(
-            alignment: Alignment.topLeft,
-            child: Material(
-              elevation: 4,
-              borderRadius: BorderRadius.circular(12),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: 200, maxWidth: MediaQuery.of(context).size.width - 40),
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (context, i) {
-                    final option = options.elementAt(i);
-                    return ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.location_on_outlined, size: 18, color: AppColors.accent),
-                      title: Text(option, style: GoogleFonts.plusJakartaSans(fontSize: 14)),
-                      onTap: () => onSelected(option),
-                    );
-                  },
-                ),
+    return Autocomplete<String>(
+      optionsBuilder: (TextEditingValue textEditingValue) async {
+        if (textEditingValue.text.length < 2) return const Iterable<String>.empty();
+        return await PropertyService.searchCityAreas(textEditingValue.text);
+      },
+      onSelected: (String selection) => _areaCtrl.text = selection,
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        controller.addListener(() => _areaCtrl.text = controller.text);
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
+          decoration: InputDecoration(
+            labelText: 'Area / Locality',
+            hintText: 'Search area (2+ letters)',
+            labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosSecondaryLabel),
+            hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosTertiaryLabel, fontWeight: FontWeight.w400),
+            filled: false,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          validator: (val) {
+            if (val == null || val.trim().isEmpty) return 'Area is required';
+            return null;
+          },
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 200, maxWidth: MediaQuery.of(context).size.width - 56),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, i) {
+                  final option = options.elementAt(i);
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(Icons.location_on_outlined, size: 18, color: AppColors.iosSystemBlue),
+                    title: Text(option, style: GoogleFonts.inter(fontSize: 14)),
+                    onTap: () => onSelected(option),
+                  );
+                },
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -220,305 +267,185 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     final isBuilder = AuthService.userType == 'Builder';
 
     return Scaffold(
-      backgroundColor: AppColors.offWhite,
+      backgroundColor: AppColors.iosGroupedBg,
       appBar: AppBar(
-        title: Text('Add Property', style: GoogleFonts.plusJakartaSans(color: AppColors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.primary,
-        iconTheme: const IconThemeData(color: AppColors.white),
+        backgroundColor: AppColors.iosGroupedBg,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('Add Property', style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.charcoal)),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.only(bottom: 40),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Category Dropdown
-              DropdownButtonFormField<PropertyCategory>(
-                value: _category,
-                decoration: InputDecoration(
-                  labelText: 'Property Category',
-                  filled: true,
-                  fillColor: AppColors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-                items: (isBuilder
-                        ? [PropertyCategory.newProperty]
-                        : [PropertyCategory.residential, PropertyCategory.commercial])
-                    .map((cat) => DropdownMenuItem(value: cat, child: Text(cat.value)))
-                    .toList(),
-                onChanged: isBuilder ? null : (val) {
-                  if (val != null) {
-                    setState(() {
-                      _category = val;
-                      // Reset listing type if moving away from commercial and currently plot
-                      if (val != PropertyCategory.commercial && _listingType == ListingType.plot) {
-                        _listingType = ListingType.resale;
-                      }
-                      if (_listingType == ListingType.newLaunch && val != PropertyCategory.newProperty) {
-                        _listingType = ListingType.resale;
-                      }
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Listing Type Dropdown (hidden for Builder)
-              if (!isBuilder)
-                DropdownButtonFormField<ListingType>(
-                  key: ValueKey('listing_${_category.value}'),
-                  value: _listingType,
-                  decoration: InputDecoration(
-                    labelText: 'Listing Type',
-                    filled: true,
-                    fillColor: AppColors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
-                  items: (_category == PropertyCategory.commercial 
-                          ? [ListingType.resale, ListingType.rent, ListingType.plot] 
-                          : [ListingType.resale, ListingType.rent])
-                      .map((t) => DropdownMenuItem(value: t, child: Text(t.value)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _listingType = val);
+              // ── Classification ──
+              _buildSectionHeader('CLASSIFICATION'),
+              _buildGroupedCard([
+                _buildDropdownField<PropertyCategory>(
+                  'Category', _category,
+                  isBuilder ? [PropertyCategory.newProperty] : [PropertyCategory.residential, PropertyCategory.commercial],
+                  (c) => c.value,
+                  isBuilder ? null : (val) {
+                    if (val != null) {
+                      setState(() {
+                        _category = val;
+                        if (val != PropertyCategory.commercial && _listingType == ListingType.plot) {
+                          _listingType = ListingType.resale;
+                        }
+                        if (_listingType == ListingType.newLaunch && val != PropertyCategory.newProperty) {
+                          _listingType = ListingType.resale;
+                        }
+                      });
+                    }
                   },
                 ),
-              if (!isBuilder) const SizedBox(height: 16),
+                if (!isBuilder)
+                  _buildDropdownField<ListingType>(
+                    'Listing Type', _listingType,
+                    _category == PropertyCategory.commercial 
+                        ? [ListingType.resale, ListingType.rent, ListingType.plot] 
+                        : [ListingType.resale, ListingType.rent],
+                    (t) => t.value,
+                    (val) { if (val != null) setState(() => _listingType = val); },
+                  ),
+              ]),
 
-              _buildTextField('City', _cityCtrl),
-              _buildAreaAutocomplete(),
-              _buildTextField('Subarea', _subareaCtrl, hint: 'e.g., Sector 4, Phase 1', isOptional: true),
+              // ── Location ──
+              _buildSectionHeader('LOCATION'),
+              _buildGroupedCard([
+                _buildFormField('City', _cityCtrl),
+                _buildAreaAutocomplete(),
+                _buildFormField('Subarea', _subareaCtrl, hint: 'e.g., Sector 4', isOptional: true),
+              ]),
 
-              if (!_isPlot)
-                _buildTextField(_isNew ? 'Scheme / Society Name' : 'Society Name', _societyCtrl),
+              // ── Property Details ──
+              _buildSectionHeader('DETAILS'),
+              _buildGroupedCard([
+                if (!_isPlot) _buildFormField(_isNew ? 'Scheme / Society' : 'Society Name', _societyCtrl),
+                if (!_isPlot && _category == PropertyCategory.commercial)
+                  _buildFormField('Shop / Unit', _flatTypeCtrl, hint: 'e.g., Shop 14'),
+                if (!_isPlot && _category != PropertyCategory.commercial)
+                  _buildDropdownField<String>(
+                    'Flat / Bungalow', _selectedFlatBhk,
+                    ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'],
+                    (t) => t,
+                    (val) { if (val != null) setState(() => _selectedFlatBhk = val); },
+                    validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                  ),
+                if (_isPlot) ...[
+                  _buildFormField('Plot Area', _areaValueCtrl, isNumber: true, hint: 'e.g., 1000'),
+                  _buildDropdownField<String>('Unit', _areaUnit, ['SqFt', 'Guntha', 'Acre'], (u) => u, (val) { if (val != null) setState(() => _areaUnit = val); }),
+                ] else ...[
+                  _buildDropdownField<String>('Area Type', _selectedAreaType, ['Carpet Area', 'Built-up Area'], (t) => t, (val) { if (val != null) setState(() => _selectedAreaType = val); }),
+                  _buildFormField('Area (SqFt)', _generalAreaCtrl, isNumber: true, hint: 'e.g., 1000'),
+                ],
+                if (!_isPlot && !_isNew)
+                  _buildDropdownField<int>(
+                    'Floor Number', _selectedFloor,
+                    List.generate(41, (i) => i),
+                    (f) => f == 0 ? '0 (Ground)' : f.toString(),
+                    (val) { if (val != null) setState(() => _selectedFloor = val); },
+                    validator: (val) => val == null ? 'Required' : null,
+                  ),
+              ]),
 
-              if (!_isPlot)
-                if (_category == PropertyCategory.commercial)
-                  _buildTextField('Shop / Unit Number', _flatTypeCtrl, hint: 'e.g., Shop 14')
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedFlatBhk,
-                      decoration: InputDecoration(
-                        labelText: 'Flat / Bungalow',
-                        filled: true,
-                        fillColor: AppColors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                      items: ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow']
-                          .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                          .toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _selectedFlatBhk = val);
+              // ── Pricing ──
+              _buildSectionHeader('PRICING'),
+              _buildGroupedCard([
+                _buildFormField(_isRent ? 'Rent (Monthly)' : 'Price', _priceCtrl, isNumber: true, hint: _isRent ? 'e.g., 15000' : 'e.g., 5000000'),
+                if (_isRent) _buildFormField('Deposit', _depositCtrl, isNumber: true, hint: 'e.g., 50000'),
+              ]),
+
+              // ── Additional ──
+              if (!_isPlot && !_isNew || _isNew) ...[
+                _buildSectionHeader('ADDITIONAL'),
+                _buildGroupedCard([
+                  if (!_isNew && !_isPlot)
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(context: context, initialDate: _availabilityDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                        if (picked != null) setState(() => _availabilityDate = picked);
                       },
-                      validator: (val) {
-                        if (val == null || val.isEmpty) return 'Please select an option';
-                        return null;
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Text('Available From', style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal)),
+                            const Spacer(),
+                            Text(
+                              _availabilityDate != null ? DateFormat('dd MMM yyyy').format(_availabilityDate!) : 'Select',
+                              style: GoogleFonts.inter(fontSize: 15, color: _availabilityDate != null ? AppColors.iosSystemBlue : AppColors.iosSecondaryLabel),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_isNew)
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 3650)));
+                        if (picked != null) setState(() => _possessionDate = picked);
                       },
-                    ),
-                  ),
-
-              if (_isPlot)
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: _buildTextField('Plot Area', _areaValueCtrl, isNumber: true, hint: 'e.g., 1000'),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<String>(
-                        key: const ValueKey('unit_plot'),
-                        value: _areaUnit,
-                        decoration: InputDecoration(
-                          labelText: 'Unit',
-                          filled: true,
-                          fillColor: AppColors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Text('Possession Date', style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal)),
+                            const Spacer(),
+                            Text(
+                              _possessionDate != null ? DateFormat('dd MMM yyyy').format(_possessionDate!) : 'Select',
+                              style: GoogleFonts.inter(fontSize: 15, color: _possessionDate != null ? AppColors.iosSystemBlue : AppColors.iosSecondaryLabel),
+                            ),
+                          ],
                         ),
-                        items: ['SqFt', 'Guntha', 'Acre']
-                            .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                            .toList(),
-                        onChanged: (val) { if (val != null) setState(() => _areaUnit = val); },
                       ),
-                    )
-                  ],
-                )
-              else
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedAreaType,
-                        decoration: InputDecoration(
-                          labelText: 'Area Type',
-                          filled: true,
-                          fillColor: AppColors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  if (!_isPlot && !_isNew)
+                    _buildDropdownField<String>('Parking', _selectedParking, ['Open', 'Covered', 'Not available'], (p) => p, (val) { if (val != null) setState(() => _selectedParking = val); }),
+                  if (!_isPlot && !_isNew)
+                    _buildDropdownField<String>('Furnishing', _selectedFurnishing, ['Full', 'Semi', 'Unfurnished'], (f) => f, (val) { if (val != null) setState(() => _selectedFurnishing = val); }),
+                ]),
+              ],
+
+              // ── Submit ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 32, 16, 0),
+                child: _isLoading
+                  ? const Center(child: CircularProgressIndicator.adaptive())
+                  : GestureDetector(
+                      onTap: _submitProperty,
+                      child: Container(
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: AppColors.iosSystemBlue,
+                          gradient: const LinearGradient(
+                            colors: [AppColors.iosSystemBlue, Color(0xFF0A7EEA)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(color: AppColors.iosSystemBlue.withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 4)),
+                          ],
                         ),
-                        items: ['Carpet Area', 'Built-up Area']
-                            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                            .toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedAreaType = val);
-                        },
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.maps_home_work_rounded, color: AppColors.white, size: 20),
+                            const SizedBox(width: 8),
+                            Text('Post Property', style: GoogleFonts.inter(color: AppColors.white, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.3)),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 1,
-                      child: _buildTextField('Area (SqFt)', _generalAreaCtrl, isNumber: true, hint: 'e.g., 1000'),
-                    ),
-                  ],
-                ),
-
-              if (!_isPlot && !_isNew)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: DropdownButtonFormField<int>(
-                    value: _selectedFloor,
-                    decoration: InputDecoration(
-                      labelText: 'Floor Number',
-                      filled: true,
-                      fillColor: AppColors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
-                    items: List.generate(41, (index) => index).map((floor) {
-                      return DropdownMenuItem(
-                        value: floor,
-                        child: Text(floor == 0 ? '0 (Ground)' : floor.toString()),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedFloor = val);
-                    },
-                    validator: (val) => val == null ? 'Floor Number is required' : null,
-                  ),
-                ),
-
-              if (_isRent)
-                ...[
-                  _buildTextField('Rent (Monthly)', _priceCtrl, isNumber: true, hint: 'e.g., 15000'),
-                  _buildTextField('Deposit', _depositCtrl, isNumber: true, hint: 'e.g., 50000'),
-                ]
-              else
-                _buildTextField('Price', _priceCtrl, isNumber: true, hint: 'e.g., 5000000'),
-
-              if (!_isNew && !_isPlot)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _availabilityDate ?? DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (picked != null) {
-                        setState(() => _availabilityDate = picked);
-                      }
-                    },
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Available From',
-                        filled: true,
-                        fillColor: AppColors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                      child: Text(
-                        _availabilityDate != null ? DateFormat('dd MMM yyyy').format(_availabilityDate!) : 'Select Date',
-                        style: TextStyle(color: _availabilityDate != null ? AppColors.charcoal : AppColors.mediumGray),
-                      ),
-                    ),
-                  ),
-                ),
-
-              if (_isNew)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 3650)),
-                      );
-                      if (picked != null) {
-                        setState(() => _possessionDate = picked);
-                      }
-                    },
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Possession Date',
-                        filled: true,
-                        fillColor: AppColors.white,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                      child: Text(
-                        _possessionDate != null ? DateFormat('dd MMM yyyy').format(_possessionDate!) : 'Select Date',
-                        style: TextStyle(color: _possessionDate != null ? AppColors.charcoal : AppColors.mediumGray),
-                      ),
-                    ),
-                  ),
-                ),
-
-              if (!_isPlot && !_isNew)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 24),
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedParking,
-                    decoration: InputDecoration(
-                      labelText: 'Car Parking',
-                      filled: true,
-                      fillColor: AppColors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
-                    items: ['Open', 'Covered', 'Not available']
-                        .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedParking = val);
-                    },
-                  ),
-                ),
-
-              if (!_isPlot && !_isNew)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedFurnishing,
-                    decoration: InputDecoration(
-                      labelText: 'Furnishing Status',
-                      filled: true,
-                      fillColor: AppColors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
-                    items: ['Full', 'Semi', 'Unfurnished']
-                        .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedFurnishing = val);
-                    },
-                  ),
-                ),
-
-              const SizedBox(height: 20),
-
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
-                  : GradientButton(
-                      label: 'Post Property',
-                      onPressed: _submitProperty,
-                    ),
-              
-              const SizedBox(height: 40),
+              ),
             ],
           ),
         ),
