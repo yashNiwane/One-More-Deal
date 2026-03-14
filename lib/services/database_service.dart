@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:postgres/postgres.dart';
+import 'dart:convert';
 import '../models/user_model.dart';
 import '../models/property_model.dart';
 import '../models/subscription_model.dart';
@@ -269,12 +270,14 @@ class DatabaseService {
           user_id, category, listing_type, city, area, subarea, society_name,
           flat_type, area_value, built_up_area, carpet_area, area_unit, floor_number, floor_category,
           price, deposit, availability, possession_date, parking, furnishing_status,
+          rera_no, total_buildings, amenities_count, building_structure, total_units, is_approved, variants,
           posted_at, refreshed_at, auto_delete_at
         ) VALUES (
           @userId, @category::property_category, @listingType::listing_type,
           @city, @area, @subarea, @societyName,
           @flatType, @areaValue, @builtUpArea, @carpetArea, @areaUnit, @floorNumber, @floorCategory::floor_category,
           @price, @deposit, @availability, @possessionDate, @parking, @furnishingStatus,
+          @reraNo, @totalBuildings, @amenitiesCount, @buildingStructure, @totalUnits, @isApproved, @variants::jsonb,
           NOW(), NOW(), NOW() + (@deleteDays * INTERVAL '1 day')
         )
         RETURNING *
@@ -300,6 +303,13 @@ class DatabaseService {
         'possessionDate': p.possessionDate?.toIso8601String().substring(0, 10),
         'parking':        p.parking,
         'furnishingStatus': p.furnishingStatus,
+        'reraNo':         p.reraNo,
+        'totalBuildings': p.totalBuildings,
+        'amenitiesCount': p.amenitiesCount,
+        'buildingStructure': p.buildingStructure,
+        'totalUnits':     p.totalUnits,
+        'isApproved':     p.isApproved,
+        'variants':       p.variants != null ? jsonEncode(p.variants) : null,
         'deleteDays':     deleteDays,
       },
     );
@@ -411,7 +421,8 @@ class DatabaseService {
       'p.auto_delete_at > NOW()',
       'u.is_active = true',
       '(u.trial_ends_at > NOW() OR EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.is_active = true AND s.ends_at > NOW()))',
-      '(p.is_deleted = false OR p.is_deleted IS NULL)'
+      '(p.is_deleted = false OR p.is_deleted IS NULL)',
+      '(p.is_approved = true)',
     ];
     final params = <String, dynamic>{};
 
@@ -448,6 +459,10 @@ class DatabaseService {
         conditions.add('p.parking = @parking');
         params['parking'] = filter.parking;
       }
+      if (filter.furnishingStatus != null) {
+        conditions.add('p.furnishing_status = @furnishingStatus');
+        params['furnishingStatus'] = filter.furnishingStatus;
+      }
       if (filter.userTypeFilter != null) {
         conditions.add('u.user_type = @userType');
         params['userType'] = filter.userTypeFilter!.value;
@@ -466,7 +481,12 @@ class DatabaseService {
 
     final res = await (await _db).execute(
       Sql.named('''
-        SELECT p.*, COALESCE(NULLIF(TRIM(u.company_name), ''), u.name) AS poster_name, u.user_code AS poster_code FROM properties p
+        SELECT p.*,
+               COALESCE(NULLIF(TRIM(u.company_name), ''), u.name) AS poster_name,
+               u.user_code AS poster_code,
+               u.company_name AS poster_company,
+               u.phone AS poster_phone
+        FROM properties p
         JOIN users u ON u.id = p.user_id
         WHERE $where
         ORDER BY
@@ -545,5 +565,45 @@ class DatabaseService {
       'trialDaysLeft': trialDaysLeft,
       'dealsClosed':  0,
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ADMIN – BUILDER APPROVAL
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /// Fetches all unapproved builder properties for the admin dashboard.
+  Future<List<PropertyModel>> getPendingApprovals() async {
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT p.*,
+               COALESCE(NULLIF(TRIM(u.company_name), ''), u.name) AS poster_name,
+               u.user_code AS poster_code,
+               u.company_name AS poster_company,
+               u.phone AS poster_phone
+        FROM properties p
+        JOIN users u ON u.id = p.user_id
+        WHERE p.is_approved = false
+          AND (p.is_deleted = false OR p.is_deleted IS NULL)
+        ORDER BY p.posted_at DESC
+      '''),
+      parameters: {},
+    );
+    return res.map((r) => PropertyModel.fromMap(r.toColumnMap())).toList();
+  }
+
+  /// Approves a builder property so it appears in the public Discover feed.
+  Future<void> approveProperty(int propertyId) async {
+    await (await _db).execute(
+      Sql.named('UPDATE properties SET is_approved = true WHERE id = @id'),
+      parameters: {'id': propertyId},
+    );
+  }
+
+  /// Rejects (soft-deletes) a builder property.
+  Future<void> rejectProperty(int propertyId) async {
+    await (await _db).execute(
+      Sql.named('UPDATE properties SET is_deleted = true, is_visible = false WHERE id = @id'),
+      parameters: {'id': propertyId},
+    );
   }
 }

@@ -37,6 +37,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       listingType: widget.currentFilter.listingType,
       floorCategory: widget.currentFilter.floorCategory,
       flatType: widget.currentFilter.flatType,
+      furnishingStatus: widget.currentFilter.furnishingStatus,
       userTypeFilter: widget.currentFilter.userTypeFilter,
       minPrice: widget.currentFilter.minPrice,
       maxPrice: widget.currentFilter.maxPrice,
@@ -152,6 +153,32 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    bool isBroker = _filter.userTypeFilter == null || _filter.userTypeFilter == UserTypeFilter.broker;
+    bool isBuilder = _filter.userTypeFilter == UserTypeFilter.builder;
+
+    bool isResi = _filter.category == null || _filter.category == PropertyCategory.residential;
+    bool isComm = _filter.category == PropertyCategory.commercial;
+    bool isPlot = _filter.category == PropertyCategory.plot;
+
+    List<String> bhkOptions = [];
+    if (isBuilder) {
+      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow', 'Shop', 'Office'];
+    } else if (isResi) {
+      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'];
+    } else if (isComm) {
+      bhkOptions = ['Shop', 'Office'];
+    }
+
+    if (_filter.flatType != null && !bhkOptions.contains(_filter.flatType)) {
+      _filter.flatType = null;
+    }
+
+    bool showSociety = !isPlot;
+    bool showBhk = !isPlot;
+    bool showFloor = !isPlot;
+    bool showListingType = isBroker;
+    bool showSubcategory = isBroker;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
       maxChildSize: 0.95,
@@ -222,57 +249,97 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     _buildAreaAutocomplete(),
 
                     // 3. Society / Building
-                    _sectionHeader('SOCIETY / BUILDING'),
-                    _textField(_societyCtrl, 'e.g. Amanora, Marvel Brisa…'),
+                    if (showSociety) ...[
+                      _sectionHeader('SOCIETY / BUILDING'),
+                      _textField(_societyCtrl, 'e.g. Amanora, Marvel Brisa…'),
+                    ],
 
                     // 4. Property Category — Builder / Broker
                     _sectionHeader('PROPERTY CATEGORY'),
                     _chipGroup<UserTypeFilter>(
                       items: UserTypeFilter.values,
-                      selected: _filter.userTypeFilter,
+                      selected: _filter.userTypeFilter ?? UserTypeFilter.broker,
                       label: (u) => u == UserTypeFilter.builder ? '🏗 Builder' : '🤝 Broker',
-                      activeColor: _filter.userTypeFilter == UserTypeFilter.builder
+                      activeColor: (_filter.userTypeFilter ?? UserTypeFilter.broker) == UserTypeFilter.builder
                           ? const Color(0xFFE69A1A)
                           : AppColors.iosSystemBlue,
-                      onTap: (val) => setState(() => _filter.userTypeFilter = val),
+                      onTap: (val) {
+                        setState(() {
+                          _filter.userTypeFilter = val ?? UserTypeFilter.broker;
+                          if (_filter.userTypeFilter == UserTypeFilter.builder) {
+                            _filter.category = null;
+                            _filter.listingType = null;
+                            _filter.floorCategory = null;
+                          }
+                        });
+                      },
                     ),
 
-                    // 5. Subcategory — Residential / Commercial
-                    _sectionHeader('SUBCATEGORY'),
-                    _chipGroup<PropertyCategory>(
-                      items: [PropertyCategory.residential, PropertyCategory.commercial],
-                      selected: _filter.category,
-                      label: (c) => c.value,
-                      onTap: (val) => setState(() => _filter.category = val),
-                    ),
+                    // 5. Subcategory — Residential / Commercial / Plot
+                    if (showSubcategory) ...[
+                      _sectionHeader('SUBCATEGORY'),
+                      _chipGroup<PropertyCategory>(
+                        items: [PropertyCategory.residential, PropertyCategory.commercial, PropertyCategory.plot],
+                        selected: _filter.category ?? PropertyCategory.residential,
+                        label: (c) => c.value,
+                        onTap: (val) {
+                          setState(() {
+                            _filter.category = val ?? PropertyCategory.residential;
+                            if (_filter.category == PropertyCategory.plot) {
+                               _filter.flatType = null;
+                               _filter.society = null;
+                               _filter.floorCategory = null;
+                               _societyCtrl.clear();
+                            }
+                          });
+                        },
+                      ),
+                    ],
 
-                    _sectionHeader('LISTING TYPE'),
-                    _chipGroup<ListingType>(
-                      items: ListingType.values.where((t) => t != ListingType.newLaunch).toList(),
-                      selected: _filter.listingType,
-                      label: (t) => t.value,
-                      onTap: (val) => setState(() => _filter.listingType = val),
-                    ),
+                    if (showListingType) ...[
+                      _sectionHeader('LISTING TYPE'),
+                      _chipGroup<ListingType>(
+                        items: [ListingType.resale, ListingType.rent],
+                        selected: _filter.listingType,
+                        label: (t) => t.value,
+                        onTap: (val) => setState(() => _filter.listingType = val),
+                      ),
+                    ],
 
                     // 7. BHK Config
-                    _sectionHeader('BHK / CONFIGURATION'),
-                    _chipGroup<String>(
-                      items: ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow', 'Shop', 'Office'],
-                      selected: _filter.flatType,
-                      label: (t) => t,
-                      onTap: (val) => setState(() => _filter.flatType = val),
-                    ),
+                    if (showBhk && bhkOptions.isNotEmpty) ...[
+                      _sectionHeader('BHK / CONFIGURATION'),
+                      _chipGroup<String>(
+                        items: bhkOptions,
+                        selected: _filter.flatType,
+                        label: (t) => t,
+                        onTap: (val) => setState(() => _filter.flatType = val),
+                      ),
+                    ],
 
                     // 8. Floor
-                    _sectionHeader('FLOOR'),
-                    _chipGroup<FloorCategory>(
-                      items: FloorCategory.values,
-                      selected: _filter.floorCategory,
-                      label: (f) => f.value,
-                      onTap: (val) => setState(() => _filter.floorCategory = val),
-                    ),
+                    if (showFloor) ...[
+                      _sectionHeader('FLOOR'),
+                      _chipGroup<FloorCategory>(
+                        items: FloorCategory.values,
+                        selected: _filter.floorCategory,
+                        label: (f) => f.value,
+                        onTap: (val) => setState(() => _filter.floorCategory = val),
+                      ),
+                    ],
 
-                    // 9. Price Range
+                    // 9. Furnishing Status
+                    if (showFloor) ...[
+                      _sectionHeader('FURNISHING STATUS'),
+                      _chipGroup<String>(
+                        items: const ['Full', 'Semi', 'Unfurnished'],
+                        selected: _filter.furnishingStatus,
+                        label: (f) => f,
+                        onTap: (val) => setState(() => _filter.furnishingStatus = val),
+                      ),
+                    ],
+
+                    // 10. Price Range
                     _sectionHeader('PRICE RANGE'),
                     Row(
                       children: [

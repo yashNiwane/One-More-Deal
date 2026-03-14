@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Mirrors the `properties` table row.
 /// Covers all listing types from the requirements doc:
 ///   Residential Resale / Rent
@@ -32,6 +34,19 @@ class PropertyModel {
   final String? parking;
   final String? furnishingStatus; // Full / Semi / Unfurnished
 
+  // Builder-specific fields
+  final String? reraNo;
+  final int? totalBuildings;
+  final int? amenitiesCount;
+  final String? buildingStructure;
+  final int? totalUnits;
+  final bool isApproved;
+  final List<Map<String, dynamic>>? variants; // up to 8 BHK variants
+
+  // Poster company (joined from users table)
+  final String? posterCompany;
+  final String? posterPhone;
+
   // Lifecycle (null = DB will set NOW() on INSERT)
   final bool isVisible;
   final DateTime? postedAt;
@@ -65,6 +80,13 @@ class PropertyModel {
     this.possessionDate,
     this.parking,
     this.furnishingStatus,
+    this.reraNo,
+    this.totalBuildings,
+    this.amenitiesCount,
+    this.buildingStructure,
+    this.totalUnits,
+    this.isApproved = true,
+    this.variants,
     this.isVisible = true,
     this.postedAt,
     this.refreshedAt,
@@ -72,6 +94,8 @@ class PropertyModel {
     this.createdAt,
     this.posterName,
     this.posterCode,
+    this.posterCompany,
+    this.posterPhone,
   });
 
   // ── Business rules ──────────────────────────────────────────────────
@@ -118,6 +142,18 @@ class PropertyModel {
 
   // ── Serialization ───────────────────────────────────────────────────
 
+  static List<Map<String, dynamic>>? _parseVariants(dynamic val) {
+    if (val == null) return null;
+    if (val is List) return val.cast<Map<String, dynamic>>();
+    if (val is String) {
+      try {
+        final decoded = jsonDecode(val);
+        if (decoded is List) return decoded.cast<Map<String, dynamic>>();
+      } catch (_) {}
+    }
+    return null;
+  }
+
   factory PropertyModel.fromMap(Map<String, dynamic> m) => PropertyModel(
         id:              m['id'] as int?,
         userId:          m['user_id'] as int,
@@ -140,6 +176,13 @@ class PropertyModel {
         possessionDate:  m['possession_date'] as DateTime?,
         parking:         m['parking'] as String?,
         furnishingStatus:m['furnishing_status'] as String?,
+        reraNo:          m['rera_no'] as String?,
+        totalBuildings:  m['total_buildings'] as int?,
+        amenitiesCount:  m['amenities_count'] as int?,
+        buildingStructure: m['building_structure'] as String?,
+        totalUnits:      m['total_units'] as int?,
+        isApproved:      (m['is_approved'] as bool?) ?? true,
+        variants:        _parseVariants(m['variants']),
         isVisible:       (m['is_visible'] as bool?) ?? true,
         postedAt:        m['posted_at'] as DateTime? ?? DateTime.now().toUtc(),
         refreshedAt:     m['refreshed_at'] as DateTime? ?? DateTime.now().toUtc(),
@@ -147,6 +190,8 @@ class PropertyModel {
         createdAt:       m['created_at'] as DateTime?,
         posterName:      m['poster_name'] as String?,
         posterCode:      m['poster_code'] as String?,
+        posterCompany:   m['poster_company'] as String?,
+        posterPhone:     m['poster_phone'] as String?,
       );
 
   Map<String, dynamic> toInsertMap() => {
@@ -170,6 +215,13 @@ class PropertyModel {
         'possession_date': possessionDate?.toIso8601String().substring(0, 10),
         'parking':         parking,
         'furnishing_status': furnishingStatus,
+        'rera_no':         reraNo,
+        'total_buildings': totalBuildings,
+        'amenities_count': amenitiesCount,
+        'building_structure': buildingStructure,
+        'total_units':     totalUnits,
+        'is_approved':     isApproved,
+        'variants':        variants != null ? jsonEncode(variants) : null,
       };
 
   PropertyModel copyWith({
@@ -186,6 +238,13 @@ class PropertyModel {
     String? subarea,
     String? furnishingStatus,
     bool? isVisible,
+    bool? isApproved,
+    String? reraNo,
+    int? totalBuildings,
+    int? amenitiesCount,
+    String? buildingStructure,
+    int? totalUnits,
+    List<Map<String, dynamic>>? variants,
   }) =>
       PropertyModel(
         id:              id,
@@ -209,11 +268,20 @@ class PropertyModel {
         possessionDate:  possessionDate,
         parking:         parking ?? this.parking,
         furnishingStatus:furnishingStatus ?? this.furnishingStatus,
+        reraNo:          reraNo ?? this.reraNo,
+        totalBuildings:  totalBuildings ?? this.totalBuildings,
+        amenitiesCount:  amenitiesCount ?? this.amenitiesCount,
+        buildingStructure: buildingStructure ?? this.buildingStructure,
+        totalUnits:      totalUnits ?? this.totalUnits,
+        isApproved:      isApproved ?? this.isApproved,
+        variants:        variants ?? this.variants,
         isVisible:       isVisible ?? this.isVisible,
         postedAt:        postedAt,
         refreshedAt:     refreshedAt,
         autoDeleteAt:    autoDeleteAt,
         createdAt:       createdAt,
+        posterCompany:   posterCompany,
+        posterPhone:     posterPhone,
       );
 }
 
@@ -278,6 +346,7 @@ class PropertyFilter {
   FloorCategory? floorCategory;
   String? flatType;          // BHK
   String? parking;           // Open, Covered, Not available
+  String? furnishingStatus;  // Full, Semi, Unfurnished
   UserTypeFilter? userTypeFilter; // Broker | Builder
   double? maxPrice;
   double? minPrice;
@@ -291,6 +360,7 @@ class PropertyFilter {
     this.floorCategory,
     this.flatType,
     this.parking,
+    this.furnishingStatus,
     this.userTypeFilter,
     this.maxPrice,
     this.minPrice,
@@ -298,7 +368,7 @@ class PropertyFilter {
 
   bool get isEmpty => city == null && area == null && society == null &&
       category == null && listingType == null && floorCategory == null &&
-      flatType == null && userTypeFilter == null &&
+      flatType == null && furnishingStatus == null && userTypeFilter == null &&
       maxPrice == null && minPrice == null;
 }
 

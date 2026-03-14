@@ -9,6 +9,7 @@ import 'landing_screen.dart';
 import 'properties/my_properties_screen.dart';
 import 'properties/properties_feed_screen.dart';
 import 'profile_screen.dart';
+import 'admin/admin_approvals_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -71,12 +72,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _lastCheckedAt = DateTime.now();
   }
 
+  static const _adminPhone = '9356965876';
+  bool get _isAdmin => AuthService.userPhone == _adminPhone;
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       const PropertiesFeedScreen(),
       const MyPropertiesScreen(),
       const ProfileScreen(),
+      if (_isAdmin) const AdminApprovalsScreen(),
     ];
 
     return Scaffold(
@@ -108,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _buildNavItem(0, Icons.explore_rounded, 'Discover'),
                   _buildNavItem(1, Icons.business_center_rounded, 'Listings'),
                   _buildNavItem(2, Icons.person_rounded, 'Profile'),
+                  if (_isAdmin) _buildNavItem(3, Icons.admin_panel_settings_rounded, 'Admin'),
                 ],
               ),
             ),

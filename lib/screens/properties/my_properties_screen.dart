@@ -6,6 +6,7 @@ import '../../services/property_service.dart';
 import '../../models/property_model.dart';
 import 'package:intl/intl.dart';
 import 'add_property_screen.dart';
+import 'add_builder_property_screen.dart';
 import 'edit_property_screen.dart';
 
 class MyPropertiesScreen extends StatefulWidget {
@@ -253,9 +254,10 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
           elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           onPressed: () async {
+            final isBuilder = AuthService.userType == 'Builder' || AuthService.userType == 'Developer';
             final result = await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+              MaterialPageRoute(builder: (_) => isBuilder ? const AddBuilderPropertyScreen() : const AddPropertyScreen()),
             );
             if (result == true) _loadProperties();
           },

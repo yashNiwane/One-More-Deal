@@ -1,0 +1,27 @@
+refreshed_at | timestamp with time zone
+auto_delete_at | timestamp with time zone
+created_at | timestamp with time zone
+built_up_area | numeric
+carpet_area | numeric
+deposit | numeric
+is_deleted | boolean
+area_value | numeric
+id | integer
+category | USER-DEFINED
+floor_number | integer
+floor_category | USER-DEFINED
+price | numeric
+listing_type | USER-DEFINED
+possession_date | date
+user_id | integer
+is_visible | boolean
+posted_at | timestamp with time zone
+furnishing_status | text
+city | character varying
+area | character varying
+society_name | character varying
+flat_type | character varying
+area_unit | character varying
+availability | character varying
+parking | character varying
+subarea | text
