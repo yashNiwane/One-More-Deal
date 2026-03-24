@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
@@ -21,6 +20,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   late Razorpay _razorpay;
   bool _isProcessing = false;
   SubscriptionPlan _selectedPlan = SubscriptionPlan.monthly;
+
+  void _setProcessing(bool value) {
+    if (!mounted) return;
+    setState(() => _isProcessing = value);
+  }
 
   int get _amountInRupees {
     switch (_selectedPlan) {
@@ -48,7 +52,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   void _openCheckout() {
-    setState(() => _isProcessing = true);
+    _setProcessing(true);
     var options = {
       'key': 'rzp_test_SMqkvl2TaygPEM',
       'amount': _amountInPaise,
@@ -67,7 +71,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       _razorpay.open(options);
     } catch (e) {
       debugPrint('Error: $e');
-      setState(() => _isProcessing = false);
+      _setProcessing(false);
     }
   }
 
@@ -78,6 +82,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       userId = user?.id;
     }
 
+    if (!mounted) return;
+
     if (userId != null) {
       final sub = await DatabaseService.instance.createSubscription(
         userId: userId,
@@ -87,43 +93,43 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       );
       if (sub != null) {
         await AuthService.hasActiveSubscription(); // refresh cache
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Payment Successful! Subscription activated.'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (_) => false,
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment Successful! Subscription activated.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (_) => false,
+        );
         return;
       }
     }
     
     // Fallback if db error
-    setState(() => _isProcessing = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment processed but failed to update subscription. Please contact support.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
+    _setProcessing(false);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Payment processed but failed to update subscription. Please contact support.'),
+        backgroundColor: AppColors.error,
+      ),
+    );
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
-    setState(() => _isProcessing = false);
+    _setProcessing(false);
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Payment Failed: ${response.message ?? "Unknown error"}'), backgroundColor: AppColors.error,),
     );
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    setState(() => _isProcessing = false);
+    _setProcessing(false);
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('External Wallet Selected: ${response.walletName}')),
     );

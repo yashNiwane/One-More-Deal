@@ -223,137 +223,143 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
 
               // Scrollable filters
               Expanded(
-                child: ListView(
+                child: SingleChildScrollView(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  children: [
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 4,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
 
-                    // 1. City (fixed)
-                    _sectionHeader('CITY'),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(color: AppColors.iosCardBg, borderRadius: BorderRadius.circular(10)),
-                      child: Row(
-                        children: [
-                          Icon(Icons.location_city_rounded, size: 16, color: AppColors.iosSecondaryLabel),
-                          const SizedBox(width: 8),
-                          Text('Pune', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.charcoal)),
-                          const Spacer(),
-                          Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.iosTertiaryLabel),
-                        ],
+                      // 1. City (fixed)
+                      _sectionHeader('CITY'),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(color: AppColors.iosCardBg, borderRadius: BorderRadius.circular(10)),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_city_rounded, size: 16, color: AppColors.iosSecondaryLabel),
+                            const SizedBox(width: 8),
+                            Text('Pune', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.charcoal)),
+                            const Spacer(),
+                            Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.iosTertiaryLabel),
+                          ],
+                        ),
                       ),
-                    ),
 
-                    // 2. Area
-                    _sectionHeader('AREA / LOCALITY'),
-                    _buildAreaAutocomplete(),
+                      // 2. Area
+                      _sectionHeader('AREA / LOCALITY'),
+                      _buildAreaAutocomplete(),
 
-                    // 3. Society / Building
-                    if (showSociety) ...[
-                      _sectionHeader('SOCIETY / BUILDING'),
-                      _textField(_societyCtrl, 'e.g. Amanora, Marvel Brisa…'),
-                    ],
+                      // 3. Society / Building
+                      if (showSociety) ...[
+                        _sectionHeader('SOCIETY / BUILDING'),
+                        _textField(_societyCtrl, 'e.g. Amanora, Marvel Brisa…'),
+                      ],
 
-                    // 4. Property Category — Builder / Broker
-                    _sectionHeader('PROPERTY CATEGORY'),
-                    _chipGroup<UserTypeFilter>(
-                      items: UserTypeFilter.values,
-                      selected: _filter.userTypeFilter ?? UserTypeFilter.broker,
-                      label: (u) => u == UserTypeFilter.builder ? '🏗 Builder' : '🤝 Broker',
-                      activeColor: (_filter.userTypeFilter ?? UserTypeFilter.broker) == UserTypeFilter.builder
-                          ? const Color(0xFFE69A1A)
-                          : AppColors.iosSystemBlue,
-                      onTap: (val) {
-                        setState(() {
-                          _filter.userTypeFilter = val ?? UserTypeFilter.broker;
-                          if (_filter.userTypeFilter == UserTypeFilter.builder) {
-                            _filter.category = null;
-                            _filter.listingType = null;
-                            _filter.floorCategory = null;
-                          }
-                        });
-                      },
-                    ),
-
-                    // 5. Subcategory — Residential / Commercial / Plot
-                    if (showSubcategory) ...[
-                      _sectionHeader('SUBCATEGORY'),
-                      _chipGroup<PropertyCategory>(
-                        items: [PropertyCategory.residential, PropertyCategory.commercial, PropertyCategory.plot],
-                        selected: _filter.category ?? PropertyCategory.residential,
-                        label: (c) => c.value,
+                      // 4. Property Category — Builder / Broker
+                      _sectionHeader('PROPERTY CATEGORY'),
+                      _chipGroup<UserTypeFilter>(
+                        items: UserTypeFilter.values,
+                        selected: _filter.userTypeFilter ?? UserTypeFilter.broker,
+                        label: (u) => u == UserTypeFilter.builder ? '🏗 Builder' : '🤝 Broker',
+                        activeColor: (_filter.userTypeFilter ?? UserTypeFilter.broker) == UserTypeFilter.builder
+                            ? const Color(0xFFE69A1A)
+                            : AppColors.iosSystemBlue,
                         onTap: (val) {
                           setState(() {
-                            _filter.category = val ?? PropertyCategory.residential;
-                            if (_filter.category == PropertyCategory.plot) {
-                               _filter.flatType = null;
-                               _filter.society = null;
-                               _filter.floorCategory = null;
-                               _societyCtrl.clear();
+                            _filter.userTypeFilter = val ?? UserTypeFilter.broker;
+                            if (_filter.userTypeFilter == UserTypeFilter.builder) {
+                              _filter.category = null;
+                              _filter.listingType = null;
+                              _filter.floorCategory = null;
                             }
                           });
                         },
                       ),
-                    ],
 
-                    if (showListingType) ...[
-                      _sectionHeader('LISTING TYPE'),
-                      _chipGroup<ListingType>(
-                        items: [ListingType.resale, ListingType.rent],
-                        selected: _filter.listingType,
-                        label: (t) => t.value,
-                        onTap: (val) => setState(() => _filter.listingType = val),
-                      ),
-                    ],
-
-                    // 7. BHK Config
-                    if (showBhk && bhkOptions.isNotEmpty) ...[
-                      _sectionHeader('BHK / CONFIGURATION'),
-                      _chipGroup<String>(
-                        items: bhkOptions,
-                        selected: _filter.flatType,
-                        label: (t) => t,
-                        onTap: (val) => setState(() => _filter.flatType = val),
-                      ),
-                    ],
-
-                    // 8. Floor
-                    if (showFloor) ...[
-                      _sectionHeader('FLOOR'),
-                      _chipGroup<FloorCategory>(
-                        items: FloorCategory.values,
-                        selected: _filter.floorCategory,
-                        label: (f) => f.value,
-                        onTap: (val) => setState(() => _filter.floorCategory = val),
-                      ),
-                    ],
-
-                    // 9. Furnishing Status
-                    if (showFloor) ...[
-                      _sectionHeader('FURNISHING STATUS'),
-                      _chipGroup<String>(
-                        items: const ['Full', 'Semi', 'Unfurnished'],
-                        selected: _filter.furnishingStatus,
-                        label: (f) => f,
-                        onTap: (val) => setState(() => _filter.furnishingStatus = val),
-                      ),
-                    ],
-
-                    // 10. Price Range
-                    _sectionHeader('PRICE RANGE'),
-                    Row(
-                      children: [
-                        Expanded(child: _textField(_minPriceCtrl, 'Min price', isNumber: true)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Text('—', style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel, fontSize: 16)),
+                      // 5. Subcategory — Residential / Commercial / Plot
+                      if (showSubcategory) ...[
+                        _sectionHeader('SUBCATEGORY'),
+                        _chipGroup<PropertyCategory>(
+                          items: [PropertyCategory.residential, PropertyCategory.commercial, PropertyCategory.plot],
+                          selected: _filter.category ?? PropertyCategory.residential,
+                          label: (c) => c.value,
+                          onTap: (val) {
+                            setState(() {
+                              _filter.category = val ?? PropertyCategory.residential;
+                              if (_filter.category == PropertyCategory.plot) {
+                                 _filter.flatType = null;
+                                 _filter.society = null;
+                                 _filter.floorCategory = null;
+                                 _societyCtrl.clear();
+                              }
+                            });
+                          },
                         ),
-                        Expanded(child: _textField(_maxPriceCtrl, 'Max price', isNumber: true)),
                       ],
-                    ),
 
-                    const SizedBox(height: 32),
-                  ],
+                      if (showListingType) ...[
+                        _sectionHeader('LISTING TYPE'),
+                        _chipGroup<ListingType>(
+                          items: [ListingType.resale, ListingType.rent],
+                          selected: _filter.listingType,
+                          label: (t) => t.value,
+                          onTap: (val) => setState(() => _filter.listingType = val),
+                        ),
+                      ],
+
+                      // 7. BHK Config
+                      if (showBhk && bhkOptions.isNotEmpty) ...[
+                        _sectionHeader('BHK / CONFIGURATION'),
+                        _chipGroup<String>(
+                          items: bhkOptions,
+                          selected: _filter.flatType,
+                          label: (t) => t,
+                          onTap: (val) => setState(() => _filter.flatType = val),
+                        ),
+                      ],
+
+                      // 8. Floor
+                      if (showFloor) ...[
+                        _sectionHeader('FLOOR'),
+                        _chipGroup<FloorCategory>(
+                          items: FloorCategory.values,
+                          selected: _filter.floorCategory,
+                          label: (f) => f.value,
+                          onTap: (val) => setState(() => _filter.floorCategory = val),
+                        ),
+                      ],
+
+                      // 9. Furnishing Status
+                      if (showFloor) ...[
+                        _sectionHeader('FURNISHING STATUS'),
+                        _chipGroup<String>(
+                          items: const ['Full', 'Semi', 'Unfurnished'],
+                          selected: _filter.furnishingStatus,
+                          label: (f) => f,
+                          onTap: (val) => setState(() => _filter.furnishingStatus = val),
+                        ),
+                      ],
+
+                      // 10. Price Range
+                      _sectionHeader('PRICE RANGE'),
+                      Row(
+                        children: [
+                          Expanded(child: _textField(_minPriceCtrl, 'Min price', isNumber: true)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text('—', style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel, fontSize: 16)),
+                          ),
+                          Expanded(child: _textField(_maxPriceCtrl, 'Max price', isNumber: true)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
 

@@ -166,6 +166,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   letterSpacing: -0.5,
                 ),
               ),
+              const SizedBox(height: 6),
+              Text(
+                'OMD Broker Associate',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accentLight,
+                  letterSpacing: 0.8,
+                ),
+              ),
               const SizedBox(height: 40),
               
               if (_hasError) ...[

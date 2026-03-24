@@ -6,6 +6,8 @@ import '../models/property_model.dart';
 import '../models/subscription_model.dart';
 import '../models/enquiry_model.dart';
 
+typedef DailyCount = ({DateTime day, int count});
+
 /// Central singleton for all AWS RDS PostgreSQL operations.
 /// Connects lazily on first use — no need to call connect() manually.
 class DatabaseService {
@@ -567,7 +569,135 @@ class DatabaseService {
     };
   }
 
+  // ═════════════════════════════════════════════════════════════════════════════
+  // ADMIN DASHBOARD
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  /// Lightweight dashboard stats for the admin UI.
+  /// All counts are computed on-demand (no caching).
+  Future<Map<String, int>> getAdminDashboardStats() async {
+    final db = await _db;
+
+    Future<int> count(String sql, {Map<String, dynamic> params = const {}}) async {
+      final res = await db.execute(Sql.named(sql), parameters: params);
+      return ((res.isNotEmpty ? res.first[0] : 0) as int?) ?? 0;
+    }
+
+    final totalUsers = await count('SELECT COUNT(*) FROM users');
+    final activeUsers = await count('SELECT COUNT(*) FROM users WHERE is_active = true');
+
+    final totalProperties = await count('''
+      SELECT COUNT(*)
+      FROM properties
+      WHERE (is_deleted = false OR is_deleted IS NULL)
+    ''');
+
+    final visibleProperties = await count('''
+      SELECT COUNT(*)
+      FROM properties
+      WHERE is_visible = true
+        AND auto_delete_at > NOW()
+        AND (is_deleted = false OR is_deleted IS NULL)
+    ''');
+
+    final pendingApprovals = await count('''
+      SELECT COUNT(*)
+      FROM properties
+      WHERE is_approved = false
+        AND (is_deleted = false OR is_deleted IS NULL)
+    ''');
+
+    // Note: enum values use Title Case strings (e.g., 'New').
+    final builderProjects = await count('''
+      SELECT COUNT(*)
+      FROM properties
+      WHERE category = 'New'::property_category
+        AND (is_deleted = false OR is_deleted IS NULL)
+    ''');
+
+    final activeSubscriptions = await count('''
+      SELECT COUNT(*)
+      FROM subscriptions
+      WHERE is_active = true AND ends_at > NOW()
+    ''');
+
+    return {
+      'totalUsers': totalUsers,
+      'activeUsers': activeUsers,
+      'totalProperties': totalProperties,
+      'visibleProperties': visibleProperties,
+      'pendingApprovals': pendingApprovals,
+      'builderProjects': builderProjects,
+      'activeSubscriptions': activeSubscriptions,
+    };
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
+  /// New users per day for the last [days] days.
+  /// Returns sparse results (days with zero activity are omitted).
+  Future<List<DailyCount>> getAdminNewUsersByDay({int days = 14}) async {
+    final start = _startOfDayUtc(days: days);
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT created_at::date AS day, COUNT(*)::int AS c
+        FROM users
+        WHERE created_at >= @start
+        GROUP BY day
+        ORDER BY day
+      '''),
+      parameters: {'start': start},
+    );
+
+    return res.map((r) => (day: (r[0] as DateTime), count: (r[1] as int?) ?? 0)).toList(growable: false);
+  }
+
+  /// New listings per day (based on `posted_at`) for the last [days] days.
+  /// Returns sparse results (days with zero activity are omitted).
+  Future<List<DailyCount>> getAdminNewListingsByDay({int days = 14}) async {
+    final start = _startOfDayUtc(days: days);
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT posted_at::date AS day, COUNT(*)::int AS c
+        FROM properties
+        WHERE posted_at IS NOT NULL
+          AND posted_at >= @start
+          AND (is_deleted = false OR is_deleted IS NULL)
+        GROUP BY day
+        ORDER BY day
+      '''),
+      parameters: {'start': start},
+    );
+
+    return res.map((r) => (day: (r[0] as DateTime), count: (r[1] as int?) ?? 0)).toList(growable: false);
+  }
+
+  /// Total count of listings by `category` (enum text).
+  Future<Map<String, int>> getAdminPropertyCategoryBreakdown() async {
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT COALESCE(category::text, 'Unknown') AS k, COUNT(*)::int AS c
+        FROM properties
+        WHERE (is_deleted = false OR is_deleted IS NULL)
+        GROUP BY k
+        ORDER BY c DESC
+      '''),
+    );
+
+    final map = <String, int>{};
+    for (final row in res) {
+      final key = (row[0] as String?)?.trim();
+      if (key == null || key.isEmpty) continue;
+      map[key] = (row[1] as int?) ?? 0;
+    }
+    return map;
+  }
+
+  DateTime _startOfDayUtc({required int days}) {
+    final now = DateTime.now().toUtc();
+    final start = now.subtract(Duration(days: days - 1));
+    return DateTime.utc(start.year, start.month, start.day);
+  }
+
   // ADMIN – BUILDER APPROVAL
   // ═══════════════════════════════════════════════════════════════════════
 

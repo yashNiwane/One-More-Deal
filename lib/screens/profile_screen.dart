@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
 import 'landing_screen.dart';
@@ -50,13 +51,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() => _isEditing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated'), backgroundColor: AppColors.iosSystemGreen),
+          const SnackBar(
+            content: Text('Profile updated'),
+            backgroundColor: AppColors.iosSystemGreen,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.iosDestructive),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.iosDestructive,
+          ),
         );
       }
     } finally {
@@ -68,17 +75,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: Text('Logout', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-        content: Text('Are you sure you want to logout?', style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          'Logout',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800),
+        ),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: GoogleFonts.inter(color: AppColors.iosSystemBlue, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(
+                color: AppColors.iosSystemBlue,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Logout', style: GoogleFonts.inter(color: AppColors.iosDestructive, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Logout',
+              style: GoogleFonts.inter(
+                color: AppColors.iosDestructive,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -96,22 +121,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.iosGroupedBg,
+      backgroundColor: const Color(0xFFF3F5F9),
       body: CustomScrollView(
         slivers: [
-          // ── App Bar ──
           SliverAppBar(
             pinned: true,
-            backgroundColor: AppColors.iosGroupedBg,
+            backgroundColor: const Color(0xFF0B1733),
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
             title: Text(
               'Profile',
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.charcoal,
-                letterSpacing: -0.3,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.white,
+                letterSpacing: -0.4,
               ),
             ),
             actions: [
@@ -120,16 +144,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.only(right: 8),
                   child: TextButton(
                     onPressed: () => setState(() => _isEditing = true),
-                    child: Text('Edit', style: GoogleFonts.inter(color: AppColors.iosSystemBlue, fontWeight: FontWeight.w600, fontSize: 16)),
+                    child: Text(
+                      'Edit',
+                      style: GoogleFonts.inter(
+                        color: AppColors.accentLight,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
                 ),
             ],
           ),
-
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _isEditing ? _buildEditForm() : _buildProfileView(),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF0B1733),
+                    Color(0xFF132850),
+                    Color(0xFFF3F5F9),
+                    Color(0xFFF3F5F9),
+                  ],
+                  stops: [0, 0.22, 0.22, 1],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _isEditing ? _buildEditForm() : _buildProfileView(),
+              ),
             ),
           ),
         ],
@@ -140,68 +185,177 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildProfileView() {
     return Column(
       children: [
-        const SizedBox(height: 8),
-
-        // ── Avatar card ──
+        const SizedBox(height: 12),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 24),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: AppColors.iosCardBg,
-            borderRadius: BorderRadius.circular(14),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF12244B), Color(0xFF1C3F86)],
+            ),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.18),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+            ],
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 72, height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppColors.goldGradient,
-                  boxShadow: [BoxShadow(color: AppColors.accent.withOpacity(0.25), blurRadius: 16, offset: const Offset(0, 4))],
-                ),
-                child: Center(
-                  child: Text(
-                    AuthService.userName.isNotEmpty ? AuthService.userName[0].toUpperCase() : '?',
-                    style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.white),
+              Row(
+                children: [
+                  Container(
+                    width: 78,
+                    height: 78,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppColors.goldGradient,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.accent.withValues(alpha: 0.28),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        AuthService.userName.isNotEmpty
+                            ? AuthService.userName[0].toUpperCase()
+                            : '?',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            AuthService.userType,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accentLight,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          AuthService.userName.isNotEmpty
+                              ? AuthService.userName
+                              : 'User',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.white,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          AuthService.userPhone,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.white.withValues(alpha: 0.72),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                AuthService.userName.isNotEmpty ? AuthService.userName : 'User',
-                style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.charcoal, letterSpacing: -0.4),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${AuthService.userType} · ${AuthService.userCity}${AuthService.userCode != null ? ' · ${AuthService.userCode}' : ''}',
-                style: GoogleFonts.inter(fontSize: 13, color: AppColors.iosSecondaryLabel),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildHeroStat(
+                        'City',
+                        AuthService.userCity.isNotEmpty
+                            ? AuthService.userCity
+                            : '-',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildHeroStat(
+                        'Code',
+                        AuthService.userCode?.isNotEmpty == true
+                            ? AuthService.userCode!
+                            : '-',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildHeroStat(
+                        'Company',
+                        AuthService.userCompanyName.isNotEmpty
+                            ? AuthService.userCompanyName
+                            : '-',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-
         const SizedBox(height: 24),
-
-        // ── Details section ──
-        _buildSectionHeader('DETAILS'),
-        const SizedBox(height: 6),
+        _buildSectionHeader('Details'),
+        const SizedBox(height: 8),
         _buildGroupedCard([
           _buildListRow(Icons.person_outlined, 'Name', AuthService.userName),
           _buildListRow(Icons.phone_outlined, 'Phone', AuthService.userPhone),
           _buildListRow(Icons.business_outlined, 'Type', AuthService.userType),
-          _buildListRow(Icons.location_city_outlined, 'City', AuthService.userCity),
-          _buildListRow(Icons.apartment_outlined, 'Company', AuthService.userCompanyName, isLast: true),
+          _buildListRow(
+            Icons.location_city_outlined,
+            'City',
+            AuthService.userCity,
+          ),
+          _buildListRow(
+            Icons.apartment_outlined,
+            'Company',
+            AuthService.userCompanyName,
+            isLast: true,
+          ),
         ]),
-
         const SizedBox(height: 24),
-
-        // ── Account section ──
-        _buildSectionHeader('ACCOUNT'),
-        const SizedBox(height: 6),
+        _buildSectionHeader('Account'),
+        const SizedBox(height: 8),
         _buildGroupedCard([
-          _buildTappableRow(Icons.logout_rounded, 'Logout', AppColors.iosDestructive, _logout, isLast: true),
+          _buildTappableRow(
+            Icons.logout_rounded,
+            'Logout',
+            AppColors.iosDestructive,
+            _logout,
+            isLast: true,
+          ),
         ]),
-
         const SizedBox(height: 100),
       ],
     );
@@ -212,40 +366,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
       key: _formKey,
       child: Column(
         children: [
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF12244B), Color(0xFF1C3F86)],
+              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.18),
+                  blurRadius: 28,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Edit your account details',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white,
+                    letterSpacing: -0.6,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Keep your contact and business information up to date.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: AppColors.white.withValues(alpha: 0.72),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildSectionHeader('Read-only'),
           const SizedBox(height: 8),
-
-          // ── Read-only info ──
-          _buildSectionHeader('READ-ONLY'),
-          const SizedBox(height: 6),
           _buildGroupedCard([
             _buildInfoRow('Phone', AuthService.userPhone),
             _buildInfoRow('Type', AuthService.userType, isLast: true),
           ]),
-
           const SizedBox(height: 24),
-
-          // ── Editable fields ──
-          _buildSectionHeader('EDIT PROFILE'),
-          const SizedBox(height: 6),
+          _buildSectionHeader('Edit profile'),
+          const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.iosCardBg,
-              borderRadius: BorderRadius.circular(14),
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
             child: Column(
               children: [
                 _buildFormField('Full Name', _nameCtrl),
-                Container(height: 0.5, color: AppColors.iosSeparator.withOpacity(0.3), margin: const EdgeInsets.only(left: 16)),
+                Container(
+                  height: 0.5,
+                  color: AppColors.iosSeparator.withValues(alpha: 0.3),
+                  margin: const EdgeInsets.only(left: 16),
+                ),
                 _buildFormField('City', _cityCtrl),
-                Container(height: 0.5, color: AppColors.iosSeparator.withOpacity(0.3), margin: const EdgeInsets.only(left: 16)),
+                Container(
+                  height: 0.5,
+                  color: AppColors.iosSeparator.withValues(alpha: 0.3),
+                  margin: const EdgeInsets.only(left: 16),
+                ),
                 _buildFormField('Company / Agency', _companyCtrl, isLast: true),
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // ── Actions ──
           Row(
             children: [
               Expanded(
@@ -260,51 +464,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
-                      color: AppColors.iosCardBg,
-                      borderRadius: BorderRadius.circular(14),
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.05),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
                     alignment: Alignment.center,
-                    child: Text('Cancel', style: GoogleFonts.inter(color: AppColors.iosDestructive, fontWeight: FontWeight.w600, fontSize: 16)),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.inter(
+                        color: AppColors.iosDestructive,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _isSaving
-                  ? const Center(child: CircularProgressIndicator.adaptive())
-                  : GestureDetector(
-                      onTap: _saveProfile,
-                      child: Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: AppColors.iosSystemBlue,
-                          borderRadius: BorderRadius.circular(14),
+                    ? const Center(child: CircularProgressIndicator.adaptive())
+                    : GestureDetector(
+                        onTap: _saveProfile,
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primaryLight,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.2),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Save',
+                            style: GoogleFonts.inter(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
-                        alignment: Alignment.center,
-                        child: Text('Save', style: GoogleFonts.inter(color: AppColors.white, fontWeight: FontWeight.w600, fontSize: 16)),
                       ),
-                    ),
               ),
             ],
           ),
-
           const SizedBox(height: 100),
         ],
       ),
     );
   }
 
-  // ── Helper builders ──
-
   Widget _buildSectionHeader(String title) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 16),
-        child: Text(
-          title,
-          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.iosSecondaryLabel, letterSpacing: 0.5),
-        ),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.charcoal,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 38,
+            height: 4,
+            decoration: BoxDecoration(
+              gradient: AppColors.goldGradient,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -312,58 +561,102 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildGroupedCard(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.iosCardBg,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(children: children),
     );
   }
 
-  Widget _buildListRow(IconData icon, String label, String value, {bool isLast = false}) {
+  Widget _buildListRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isLast = false,
+  }) {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               Icon(icon, size: 20, color: AppColors.iosSystemBlue),
               const SizedBox(width: 12),
-              Text(label, style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal)),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.charcoal,
+                ),
+              ),
               const Spacer(),
               Flexible(
                 child: Text(
-                  value.isNotEmpty ? value : '—',
-                  style: GoogleFonts.inter(fontSize: 15, color: AppColors.iosSecondaryLabel),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  value.isNotEmpty ? value : '-',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: AppColors.darkGray,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
         ),
         if (!isLast)
-          Container(height: 0.5, color: AppColors.iosSeparator.withOpacity(0.3), margin: const EdgeInsets.only(left: 52)),
+          Container(
+            height: 0.5,
+            color: AppColors.iosSeparator.withValues(alpha: 0.3),
+            margin: const EdgeInsets.only(left: 52),
+          ),
       ],
     );
   }
 
-  Widget _buildTappableRow(IconData icon, String label, Color color, VoidCallback onTap, {bool isLast = false}) {
+  Widget _buildTappableRow(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap, {
+    bool isLast = false,
+  }) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
                 Icon(icon, size: 20, color: color),
                 const SizedBox(width: 12),
-                Text(label, style: GoogleFonts.inter(fontSize: 15, color: color, fontWeight: FontWeight.w500)),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
           if (!isLast)
-            Container(height: 0.5, color: AppColors.iosSeparator.withOpacity(0.3), margin: const EdgeInsets.only(left: 52)),
+            Container(
+              height: 0.5,
+              color: AppColors.iosSeparator.withValues(alpha: 0.3),
+              margin: const EdgeInsets.only(left: 52),
+            ),
         ],
       ),
     );
@@ -373,30 +666,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Text(label, style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal)),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.charcoal,
+                ),
+              ),
               const Spacer(),
-              Text(value, style: GoogleFonts.inter(fontSize: 15, color: AppColors.iosSecondaryLabel)),
+              Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  color: AppColors.darkGray,
+                ),
+              ),
             ],
           ),
         ),
         if (!isLast)
-          Container(height: 0.5, color: AppColors.iosSeparator.withOpacity(0.3), margin: const EdgeInsets.only(left: 16)),
+          Container(
+            height: 0.5,
+            color: AppColors.iosSeparator.withValues(alpha: 0.3),
+            margin: const EdgeInsets.only(left: 16),
+          ),
       ],
     );
   }
 
-  Widget _buildFormField(String label, TextEditingController ctrl, {bool isLast = false}) {
+  Widget _buildFormField(
+    String label,
+    TextEditingController ctrl, {
+    bool isLast = false,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: TextFormField(
         controller: ctrl,
-        style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          color: AppColors.charcoal,
+          fontWeight: FontWeight.w600,
+        ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.iosSecondaryLabel),
+          labelStyle: GoogleFonts.inter(
+            fontSize: 13,
+            color: AppColors.iosSecondaryLabel,
+          ),
           filled: false,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -407,6 +728,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (val == null || val.trim().isEmpty) return '$label is required';
           return null;
         },
+      ),
+    );
+  }
+
+  Widget _buildHeroStat(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.white.withValues(alpha: 0.68),
+            ),
+          ),
+        ],
       ),
     );
   }

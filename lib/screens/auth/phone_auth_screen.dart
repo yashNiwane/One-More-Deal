@@ -149,14 +149,31 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          widget.isLogin ? 'Sign in to\nOne More Deal' : 'Create an\naccount',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: AppColors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            height: 1.2,
-                            letterSpacing: -0.8,
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: widget.isLogin ? 'Sign in to\nOne More Deal' : 'Create an\naccount',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: AppColors.white,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                  letterSpacing: -0.8,
+                                ),
+                              ),
+                              if (widget.isLogin)
+                                TextSpan(
+                                  text: '\nOMD Broker Associate',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: AppColors.accentLight,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                    height: 1.8,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ],

@@ -114,6 +114,18 @@ class AuthService {
   static bool get isLoggedIn => _p.getBool(_keyIsLoggedIn) ?? false;
   static String get userPhone => _p.getString(_keyUserPhone) ?? '';
 
+  static const _adminPhoneLast10 = '9356965876';
+
+  static String _digitsOnly(String s) => s.replaceAll(RegExp(r'\\D'), '');
+
+  static String _last10Digits(String s) {
+    final d = _digitsOnly(s);
+    if (d.length <= 10) return d;
+    return d.substring(d.length - 10);
+  }
+
+  static bool get isAdmin => _last10Digits(userPhone) == _adminPhoneLast10;
+
   static bool get isProfileComplete {
     // Primary: check in-memory user
     if (_currentUser?.name?.trim().isNotEmpty == true) return true;

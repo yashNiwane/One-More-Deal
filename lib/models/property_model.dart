@@ -366,6 +366,20 @@ class PropertyFilter {
     this.minPrice,
   });
 
+  PropertyFilter.from(PropertyFilter other)
+      : city = other.city,
+        area = other.area,
+        society = other.society,
+        category = other.category,
+        listingType = other.listingType,
+        floorCategory = other.floorCategory,
+        flatType = other.flatType,
+        parking = other.parking,
+        furnishingStatus = other.furnishingStatus,
+        userTypeFilter = other.userTypeFilter,
+        maxPrice = other.maxPrice,
+        minPrice = other.minPrice;
+
   bool get isEmpty => city == null && area == null && society == null &&
       category == null && listingType == null && floorCategory == null &&
       flatType == null && furnishingStatus == null && userTypeFilter == null &&

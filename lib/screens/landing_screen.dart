@@ -145,26 +145,48 @@ class _LandingScreenState extends State<LandingScreen>
                         ),
                         const SizedBox(width: 12),
                         // Brand name — gold with shadow
-                        Text(
-                          AppStrings.appName,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: AppColors.accentLight,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                            shadows: const [
-                              Shadow(
-                                color: Color(0xFF000000),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              AppStrings.appName,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppColors.accentLight,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                                shadows: const [
+                                  Shadow(
+                                    color: Color(0xFF000000),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
+                                  ),
+                                  Shadow(
+                                    color: Color(0x88000000),
+                                    blurRadius: 20,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              Shadow(
-                                color: Color(0x88000000),
-                                blurRadius: 20,
-                                offset: Offset(0, 4),
+                            ),
+                            Text(
+                              'OMD Broker Associate',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: AppColors.white.withValues(alpha: 0.9),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                                shadows: const [
+                                  Shadow(
+                                    color: Color(0xFF000000),
+                                    blurRadius: 6,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -284,6 +306,10 @@ class _LandingScreenState extends State<LandingScreen>
                             style: const TextStyle(
                                 color: AppColors.accentLight,
                                 decoration: TextDecoration.underline),
+                          ),
+                          const TextSpan(
+                            text: '\nContact us - 9209182221',
+                            style: TextStyle(height: 1.8, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),

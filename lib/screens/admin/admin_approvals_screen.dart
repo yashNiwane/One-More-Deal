@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+
 import '../../core/app_colors.dart';
 import '../../models/property_model.dart';
 import '../../services/database_service.dart';
 
-/// Admin screen showing unapproved builder properties.
-/// Only accessible to admin phone: 9356965876.
 class AdminApprovalsScreen extends StatefulWidget {
-  const AdminApprovalsScreen({super.key});
+  const AdminApprovalsScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<AdminApprovalsScreen> createState() => _AdminApprovalsScreenState();
@@ -16,6 +17,7 @@ class AdminApprovalsScreen extends StatefulWidget {
 
 class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
   bool _isLoading = true;
+  int? _activePropertyId;
   List<PropertyModel> _pendingProperties = [];
 
   @override
@@ -28,29 +30,45 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
     setState(() => _isLoading = true);
     try {
       final items = await DatabaseService.instance.getPendingApprovals();
-      if (mounted) setState(() => _pendingProperties = items);
+      if (mounted) {
+        setState(() => _pendingProperties = items);
+      }
     } catch (e) {
       debugPrint('[ADMIN] Error loading pending: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _approve(PropertyModel prop) async {
     if (prop.id == null) return;
+    setState(() => _activePropertyId = prop.id);
     try {
       await DatabaseService.instance.approveProperty(prop.id!);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ "${prop.societyName ?? 'Property'}" approved!'),
-          backgroundColor: AppColors.iosSystemGreen,
+          content: Text(
+            '"${prop.societyName ?? 'Property'}" approved successfully',
+          ),
+          backgroundColor: AppColors.success,
         ),
       );
-      _loadPending();
+      await _loadPending();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.iosDestructive),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: AppColors.iosDestructive,
+        ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _activePropertyId = null);
+      }
     }
   }
 
@@ -60,40 +78,72 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Reject Property?'),
-        content: Text('This will permanently hide "${prop.societyName ?? 'this property'}" from all listings.'),
+        content: Text(
+          'This will permanently hide "${prop.societyName ?? 'this property'}" from all listings.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reject', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Reject',
+              style: TextStyle(color: AppColors.iosDestructive),
+            ),
           ),
         ],
       ),
     );
     if (confirm != true) return;
 
+    setState(() => _activePropertyId = prop.id);
     try {
       await DatabaseService.instance.rejectProperty(prop.id!);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Property rejected'), backgroundColor: AppColors.iosDestructive),
+        const SnackBar(
+          content: Text('Property rejected'),
+          backgroundColor: AppColors.iosDestructive,
+        ),
       );
-      _loadPending();
+      await _loadPending();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.iosDestructive),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: AppColors.iosDestructive,
+        ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _activePropertyId = null);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final body = _buildBody();
+
+    if (widget.embedded) return body;
+
     return Scaffold(
       backgroundColor: AppColors.iosGroupedBg,
       appBar: AppBar(
         backgroundColor: AppColors.iosGroupedBg,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
-        title: Text('Admin Approvals', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.charcoal)),
+        title: Text(
+          'Admin Approvals',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.charcoal,
+          ),
+        ),
         actions: [
           IconButton(
             onPressed: _loadPending,
@@ -101,141 +151,401 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator.adaptive())
-          : _pendingProperties.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle_outline_rounded, size: 64, color: AppColors.iosSystemGreen.withOpacity(0.5)),
-                      const SizedBox(height: 16),
-                      Text('No pending approvals', style: GoogleFonts.inter(fontSize: 16, color: AppColors.iosSecondaryLabel)),
-                      const SizedBox(height: 8),
-                      Text('All builder listings are reviewed!', style: GoogleFonts.inter(fontSize: 13, color: AppColors.iosTertiaryLabel)),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadPending,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                    itemCount: _pendingProperties.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) => _buildApprovalCard(_pendingProperties[index]),
-                  ),
-                ),
+      body: body,
     );
   }
 
-  Widget _buildApprovalCard(PropertyModel prop) {
-    final formatter = NumberFormat('#,##,###', 'en_IN');
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator.adaptive());
+    }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.iosCardBg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 3)),
-        ],
-        border: Border.all(color: Colors.amber.withOpacity(0.3), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return RefreshIndicator(
+      onRefresh: _loadPending,
+      color: AppColors.accent,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 120),
         children: [
-          // ── Header ──
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+          _buildTopSummary(),
+          const SizedBox(height: 16),
+          if (_pendingProperties.isEmpty)
+            _buildEmptyState()
+          else
+            ..._pendingProperties.map(
+              (prop) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildApprovalCard(prop),
+              ),
             ),
-            child: Row(
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopSummary() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1A2B5F), Color(0xFF223B79), Color(0xFFF59E0B)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.18),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.fact_check_rounded,
+              color: AppColors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
+                Text(
+                  'Approval Queue',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white,
+                    letterSpacing: -0.7,
                   ),
-                  child: Text('PENDING', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.amber.shade800, letterSpacing: 0.5)),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    prop.societyName ?? 'Unnamed Project',
-                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.charcoal),
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 6),
+                Text(
+                  '${_pendingProperties.length} builder listings waiting for a decision.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: AppColors.white.withValues(alpha: 0.78),
                   ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 42),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(
+              Icons.check_circle_outline_rounded,
+              color: AppColors.success,
+              size: 36,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No pending approvals',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.charcoal,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'All builder listings are reviewed and the queue is clear.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              height: 1.5,
+              color: AppColors.darkGray,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApprovalCard(PropertyModel prop) {
+    final formatter = NumberFormat('#,##,###', 'en_IN');
+    final rawVariants = prop.variants ?? const <Map<String, dynamic>>[];
+    final isActing = _activePropertyId == prop.id;
+
+    num? toNum(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value;
+      if (value is String) return num.tryParse(value);
+      return null;
+    }
+
+    Map<String, dynamic>? meta;
+    final variantRows = <Map<String, dynamic>>[];
+    for (final variant in rawVariants) {
+      if ((variant['type']?.toString().toLowerCase() ?? '') == 'meta') {
+        meta = variant;
+        continue;
+      }
+      if (variant.containsKey('flat_type')) {
+        variantRows.add(variant);
+        continue;
+      }
+      if (variant.containsKey('fos') ||
+          variant.containsKey('cp_slab_percent')) {
+        meta = variant;
+      }
+    }
+
+    final fos = toNum(meta?['fos']);
+    final cpSlabPercent = toNum(meta?['cp_slab_percent']);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFF8E6), Color(0xFFFFF1CC)],
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'PENDING',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFB45309),
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        prop.societyName ?? 'Unnamed Project',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.charcoal,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${prop.area}, ${prop.city}',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkGray,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Info Grid ──
-                _infoRow(Icons.location_on_outlined, '${prop.area}, ${prop.city}'),
-                if (prop.reraNo != null && prop.reraNo!.isNotEmpty)
-                  _infoRow(Icons.verified_outlined, 'RERA: ${prop.reraNo}'),
-                if (prop.possessionDate != null)
-                  _infoRow(Icons.calendar_today_outlined, 'Possession: ${DateFormat('dd/MM/yyyy').format(prop.possessionDate!)}'),
-                if (prop.areaValue != null)
-                  _infoRow(Icons.landscape_outlined, 'Land: ${prop.areaValue} Acres'),
-                if (prop.totalBuildings != null)
-                  _infoRow(Icons.apartment_rounded, 'Buildings: ${prop.totalBuildings}'),
-                if (prop.amenitiesCount != null)
-                  _infoRow(Icons.pool_rounded, 'Amenities: ${prop.amenitiesCount}+'),
-                if (prop.buildingStructure != null && prop.buildingStructure!.isNotEmpty)
-                  _infoRow(Icons.account_tree_outlined, 'Structure: ${prop.buildingStructure}'),
-                if (prop.totalUnits != null)
-                  _infoRow(Icons.grid_view_rounded, 'Total Units: ${prop.totalUnits}'),
-
-                const SizedBox(height: 12),
-
-                // ── Variants Table ──
-                if (prop.variants != null && prop.variants!.isNotEmpty) ...[
-                  Text('Variants', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.charcoal)),
-                  const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _detailChip(
+                      Icons.verified_outlined,
+                      prop.reraNo?.isNotEmpty == true
+                          ? 'RERA: ${prop.reraNo}'
+                          : 'RERA not added',
+                    ),
+                    if (prop.possessionDate != null)
+                      _detailChip(
+                        Icons.calendar_today_outlined,
+                        'Possession ${DateFormat('dd MMM yyyy').format(prop.possessionDate!)}',
+                      ),
+                    if (prop.areaValue != null)
+                      _detailChip(
+                        Icons.landscape_outlined,
+                        '${prop.areaValue} Acres',
+                      ),
+                    if (prop.totalUnits != null)
+                      _detailChip(
+                        Icons.grid_view_rounded,
+                        '${prop.totalUnits} Units',
+                      ),
+                    if (prop.totalBuildings != null)
+                      _detailChip(
+                        Icons.apartment_rounded,
+                        '${prop.totalBuildings} Buildings',
+                      ),
+                    if (prop.amenitiesCount != null)
+                      _detailChip(
+                        Icons.pool_rounded,
+                        '${prop.amenitiesCount}+ Amenities',
+                      ),
+                  ],
+                ),
+                if (prop.buildingStructure?.isNotEmpty == true ||
+                    fos != null ||
+                    cpSlabPercent != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      children: [
+                        if (prop.buildingStructure?.isNotEmpty == true)
+                          _infoRow(
+                            Icons.account_tree_outlined,
+                            'Structure',
+                            prop.buildingStructure!,
+                          ),
+                        if (fos != null)
+                          _infoRow(
+                            Icons.request_quote_outlined,
+                            'FOS',
+                            'Rs ${formatter.format(fos)}',
+                          ),
+                        if (cpSlabPercent != null)
+                          _infoRow(
+                            Icons.percent_rounded,
+                            'CP Slab',
+                            '${cpSlabPercent.toDouble() % 1 == 0 ? cpSlabPercent.toDouble().toStringAsFixed(0) : cpSlabPercent.toDouble().toStringAsFixed(1)}%',
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (variantRows.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  Text(
+                    'Variants',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.iosSeparator.withOpacity(0.3)),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.lightGray),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(20),
                       child: Table(
                         columnWidths: const {
                           0: FlexColumnWidth(1.2),
-                          1: FlexColumnWidth(1),
-                          2: FlexColumnWidth(1.4),
-                          3: FlexColumnWidth(1.4),
+                          1: FlexColumnWidth(0.9),
+                          2: FlexColumnWidth(1.3),
+                          3: FlexColumnWidth(1.3),
                         },
                         border: TableBorder.symmetric(
-                          inside: BorderSide(color: AppColors.iosSeparator.withOpacity(0.2)),
+                          inside: BorderSide(
+                            color: AppColors.lightGray.withValues(alpha: 0.8),
+                          ),
                         ),
                         children: [
-                          // Header
                           TableRow(
-                            decoration: BoxDecoration(color: AppColors.iosSystemBlue.withOpacity(0.06)),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF8FAFC),
+                            ),
                             children: [
                               _tableCell('Flat Type', isHeader: true),
                               _tableCell('Carpet', isHeader: true),
-                              _tableCell('Agree. Cost', isHeader: true),
-                              _tableCell('Total Cost', isHeader: true),
+                              _tableCell('Agree.', isHeader: true),
+                              _tableCell('Total', isHeader: true),
                             ],
                           ),
-                          // Data rows
-                          for (final v in prop.variants!)
+                          for (final variant in variantRows)
                             TableRow(
                               children: [
-                                _tableCell(v['flat_type']?.toString() ?? '-'),
-                                _tableCell('${(v['carpet'] as num?)?.toInt() ?? '-'}'),
-                                _tableCell(formatter.format((v['agreement_cost'] as num?)?.toInt() ?? 0)),
-                                _tableCell(formatter.format((v['total_cost'] as num?)?.toInt() ?? 0)),
+                                _tableCell(
+                                  variant['flat_type']?.toString() ?? '-',
+                                ),
+                                _tableCell(
+                                  '${toNum(variant['carpet'])?.toInt() ?? '-'}',
+                                ),
+                                _tableCell(
+                                  formatter.format(
+                                    toNum(variant['agreement_cost'])?.toInt() ??
+                                        0,
+                                  ),
+                                ),
+                                _tableCell(
+                                  formatter.format(
+                                    toNum(variant['total_cost'])?.toInt() ?? 0,
+                                  ),
+                                ),
                               ],
                             ),
                         ],
@@ -243,66 +553,130 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
                     ),
                   ),
                 ],
-
-                const SizedBox(height: 8),
-
-                // ── Posted By ──
-                Row(
-                  children: [
-                    Icon(Icons.person_outline_rounded, size: 14, color: AppColors.iosSecondaryLabel),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'By: ${prop.posterCompany ?? prop.posterName ?? 'Unknown'} (${prop.posterPhone ?? ''})',
-                        style: GoogleFonts.inter(fontSize: 12, color: AppColors.iosSecondaryLabel),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-
                 const SizedBox(height: 16),
-
-                // ── Action Buttons ──
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.business_center_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '${prop.posterCompany ?? prop.posterName ?? 'Unknown'}${prop.posterPhone?.isNotEmpty == true ? '  •  ${prop.posterPhone}' : ''}',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.charcoal,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () => _reject(prop),
-                        child: Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppColors.iosDestructive.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.iosDestructive.withOpacity(0.3)),
+                      child: OutlinedButton(
+                        onPressed: isActing ? null : () => _reject(prop),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(52),
+                          side: BorderSide(
+                            color: AppColors.iosDestructive.withValues(
+                              alpha: 0.25,
+                            ),
                           ),
-                          alignment: Alignment.center,
-                          child: Text('Reject', style: GoogleFonts.inter(color: AppColors.iosDestructive, fontWeight: FontWeight.w600, fontSize: 14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          foregroundColor: AppColors.iosDestructive,
+                        ),
+                        child: Text(
+                          'Reject',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       flex: 2,
-                      child: GestureDetector(
-                        onTap: () => _approve(prop),
-                        child: Container(
-                          height: 44,
+                      child: ElevatedButton(
+                        onPressed: isActing ? null : () => _approve(prop),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(52),
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Ink(
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFF34C759), Color(0xFF2AAF4F)]),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primaryLight,
+                              ],
+                            ),
                             boxShadow: [
-                              BoxShadow(color: AppColors.iosSystemGreen.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3)),
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.2),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8),
+                              ),
                             ],
                           ),
-                          alignment: Alignment.center,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check_rounded, color: Colors.white, size: 18),
-                              const SizedBox(width: 6),
-                              Text('Approve', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                            ],
+                          child: Container(
+                            alignment: Alignment.center,
+                            child: isActing
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.white,
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.check_rounded,
+                                        color: AppColors.white,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Approve Listing',
+                                        style: GoogleFonts.inter(
+                                          color: AppColors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                           ),
                         ),
                       ),
@@ -317,15 +691,58 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
     );
   }
 
-  Widget _infoRow(IconData icon, String text) {
+  Widget _detailChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppColors.primaryLight),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.charcoal,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 15, color: AppColors.iosSecondaryLabel),
+          Icon(icon, size: 16, color: AppColors.primaryLight),
+          const SizedBox(width: 10),
+          Text(
+            '$label:',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.darkGray,
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text, style: GoogleFonts.inter(fontSize: 13, color: AppColors.charcoal.withOpacity(0.8))),
+            child: Text(
+              value,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.charcoal,
+              ),
+            ),
           ),
         ],
       ),
@@ -334,15 +751,15 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
 
   Widget _tableCell(String text, {bool isHeader = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Text(
         text,
+        textAlign: TextAlign.center,
         style: GoogleFonts.inter(
           fontSize: isHeader ? 11 : 12,
-          fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
-          color: isHeader ? AppColors.iosSystemBlue : AppColors.charcoal,
+          fontWeight: isHeader ? FontWeight.w800 : FontWeight.w600,
+          color: isHeader ? AppColors.primary : AppColors.charcoal,
         ),
-        textAlign: TextAlign.center,
       ),
     );
   }

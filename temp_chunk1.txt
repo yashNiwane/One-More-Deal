@@ -1,0 +1,135 @@
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          p.posterCompany?.trim().isNotEmpty == true
+                              ? Icons.storefront_outlined
+                              : Icons.person_outline,
+                          size: 13,
+                          color: cSub,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            companyOrName,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: cSub,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  await PropertyService.logEnquiry(
+                    propertyId: p.id!,
+                    type: EnquiryType.call,
+                  );
+                  try {
+                    final phone = await PropertyService.getPosterPhone(
+                      p.userId,
+                    );
+                    if (phone != null) {
+                      final uri = Uri.parse(
+                        'tel:+91${phone.replaceAll(RegExp(r'\D'), '')}',
+                      );
+                      if (await canLaunchUrl(uri)) await launchUrl(uri);
+                    } else if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Phone not available')),
+                      );
+                    }
+                  } catch (e) {
+                    debugPrint('Call error: $e');
+                  }
+                },
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: cCallBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.phone_rounded, size: 16, color: cCallFg),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () async {
+                  await PropertyService.logEnquiry(
+                    propertyId: p.id!,
+                    type: EnquiryType.whatsApp,
+                  );
+                  try {
+                    final phone = await PropertyService.getPosterPhone(
+                      p.userId,
+                    );
+                    if (phone != null) {
+                      String fp = phone;
+                      if (!fp.startsWith('+')) {
+                        fp = '+91${fp.replaceFirst(RegExp(r'^0+'), '')}';
+                      }
+                      final msg = Uri.encodeComponent(
+                        'Hi, I saw your property listing for ${p.flatType ?? p.category.value} in ${p.societyName ?? p.area} on One More Deal. Please share details.',
+                      );
+                      final uri = Uri.parse(
+                        'whatsapp://send?phone=$fp&text=$msg',
+                      );
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri);
+                      } else {
+                        final web = Uri.parse(
+                          'https://wa.me/${fp.replaceAll('+', '')}?text=$msg',
+                        );
+                        if (await canLaunchUrl(web)) {
+                          await launchUrl(
+                            web,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        } else if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('WhatsApp not installed'),
+                            ),
+                          );
+                        }
+                      }
+                    } else if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Phone not available')),
+                      );
+                    }
+                  } catch (e) {
+                    debugPrint('WA error: $e');
+                  }
+                },
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: cWaBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    FontAwesomeIcons.whatsapp,
+                    size: 15,
+                    color: Colors.white,
+                  ),
+                ),
+              ),

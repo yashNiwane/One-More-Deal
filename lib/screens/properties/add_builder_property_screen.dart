@@ -26,6 +26,8 @@ class _AddBuilderPropertyScreenState extends State<AddBuilderPropertyScreen> {
   final _amenitiesCtrl = TextEditingController();
   final _structureCtrl = TextEditingController();
   final _totalUnitsCtrl = TextEditingController();
+  final _fosCtrl = TextEditingController();
+  final _cpSlabPercentCtrl = TextEditingController();
   final _cityCtrl = TextEditingController(text: AuthService.userCity);
   final _areaCtrl = TextEditingController();
 
@@ -43,6 +45,8 @@ class _AddBuilderPropertyScreenState extends State<AddBuilderPropertyScreen> {
     _amenitiesCtrl.dispose();
     _structureCtrl.dispose();
     _totalUnitsCtrl.dispose();
+    _fosCtrl.dispose();
+    _cpSlabPercentCtrl.dispose();
     _cityCtrl.dispose();
     _areaCtrl.dispose();
     for (final v in _variants) {
@@ -98,6 +102,16 @@ class _AddBuilderPropertyScreenState extends State<AddBuilderPropertyScreen> {
         'agreement_cost': double.tryParse(v.agreementCtrl.text.trim()) ?? 0,
         'total_cost': double.tryParse(v.totalCostCtrl.text.trim()) ?? 0,
       }).toList();
+
+      final fos = double.tryParse(_fosCtrl.text.trim());
+      final cpSlabPercent = double.tryParse(_cpSlabPercentCtrl.text.trim());
+      if (fos != null || cpSlabPercent != null) {
+        variantsList.add({
+          'type': 'meta',
+          if (fos != null) 'fos': fos,
+          if (cpSlabPercent != null) 'cp_slab_percent': cpSlabPercent,
+        });
+      }
 
       final newProp = PropertyModel(
         userId: userId,
@@ -321,6 +335,8 @@ class _AddBuilderPropertyScreenState extends State<AddBuilderPropertyScreen> {
                 _buildFormField('Amenities', _amenitiesCtrl, isNumber: true, hint: 'e.g., 35+'),
                 _buildFormField('Building Structure', _structureCtrl, hint: 'e.g., B2+G+2+35'),
                 _buildFormField('Total Units', _totalUnitsCtrl, isNumber: true, hint: 'e.g., 200'),
+                _buildFormField('FOS', _fosCtrl, isNumber: true, hint: 'e.g., 25000'),
+                _buildFormField('CP Slab (%)', _cpSlabPercentCtrl, isNumber: true, hint: 'e.g., 3'),
               ]),
 
               // ── Variants ──
