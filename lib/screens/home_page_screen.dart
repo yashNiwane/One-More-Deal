@@ -172,6 +172,13 @@ class _HomePageScreenState extends State<HomePageScreen> {
         property.flatType,
         property.posterCompany,
         property.posterName,
+        property.category.value,
+        property.listingType.value,
+        property.furnishingStatus,
+        property.availability,
+        property.parking,
+        property.price?.toString(),
+        property.price != null ? _formatPrice(property.price!) : null,
       ].whereType<String>().join(' ').toLowerCase();
       return haystack.contains(query);
     }).toList();
@@ -491,6 +498,13 @@ class _HomePageScreenState extends State<HomePageScreen> {
                                 onChanged: (value) =>
                                     setState(() => _searchQuery = value),
                                 textInputAction: TextInputAction.search,
+                                onSubmitted: (value) {
+                                  if (value.trim().isNotEmpty) {
+                                    final filter = PropertyFilter(city: 'Pune');
+                                    filter.searchQuery = value.trim();
+                                    widget.onOpenDiscoverWithFilter?.call(filter);
+                                  }
+                                },
                                 style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,

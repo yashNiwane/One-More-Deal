@@ -350,6 +350,8 @@ class PropertyFilter {
   UserTypeFilter? userTypeFilter; // Broker | Builder
   double? maxPrice;
   double? minPrice;
+  String? searchQuery;
+  List<int>? brokerIds;
 
   PropertyFilter({
     this.city,
@@ -364,6 +366,8 @@ class PropertyFilter {
     this.userTypeFilter,
     this.maxPrice,
     this.minPrice,
+    this.searchQuery,
+    this.brokerIds,
   });
 
   PropertyFilter.from(PropertyFilter other)
@@ -378,12 +382,15 @@ class PropertyFilter {
         furnishingStatus = other.furnishingStatus,
         userTypeFilter = other.userTypeFilter,
         maxPrice = other.maxPrice,
-        minPrice = other.minPrice;
+        minPrice = other.minPrice,
+        searchQuery = other.searchQuery,
+        brokerIds = other.brokerIds != null ? List.from(other.brokerIds!) : null;
 
   bool get isEmpty => city == null && area == null && society == null &&
       category == null && listingType == null && floorCategory == null &&
       flatType == null && furnishingStatus == null && userTypeFilter == null &&
-      maxPrice == null && minPrice == null;
+      maxPrice == null && minPrice == null && (searchQuery == null || searchQuery!.trim().isEmpty) &&
+      (brokerIds == null || brokerIds!.isEmpty);
 }
 
 enum UserTypeFilter {

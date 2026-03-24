@@ -35,6 +35,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   String _selectedAreaType = 'Carpet Area';
   DateTime? _availabilityDate;
   String? _selectedFlatBhk;
+  static const _residentialBhkList = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow'];
+  static const _commercialTypeList = ['Office Spaces', 'Retail & Shops', 'Industrial & Warehousing', 'Co-working Spaces'];
+
   int? _selectedFloor;
   String _selectedParking = 'Not available';
   String _selectedFurnishing = 'Unfurnished';
@@ -85,9 +88,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         societyName: _isPlot ? null : _societyCtrl.text.trim(),
         flatType: _isPlot 
             ? null 
-            : (_category == PropertyCategory.commercial 
-                ? _flatTypeCtrl.text.trim() 
-                : _selectedFlatBhk),
+            : _selectedFlatBhk,
         areaValue: _isPlot ? double.tryParse(_areaValueCtrl.text.trim()) : null,
         builtUpArea: _isPlot ? null : (_selectedAreaType == 'Built-up Area' ? double.tryParse(_generalAreaCtrl.text.trim()) : null),
         carpetArea: _isPlot ? null : (_selectedAreaType == 'Carpet Area' ? double.tryParse(_generalAreaCtrl.text.trim()) : null),
@@ -295,6 +296,14 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                     if (val != null) {
                       setState(() {
                         _category = val;
+                        // Reset sub-category dependent fields to avoid crashes
+                        if (_selectedFlatBhk != null) {
+                          final validList = (_category == PropertyCategory.commercial) ? _commercialTypeList : _residentialBhkList;
+                          if (!validList.contains(_selectedFlatBhk)) {
+                            _selectedFlatBhk = null;
+                          }
+                        }
+
                         if (val != PropertyCategory.commercial && _listingType == ListingType.plot) {
                           _listingType = ListingType.resale;
                         }
@@ -329,11 +338,17 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
               _buildGroupedCard([
                 if (!_isPlot) _buildFormField(_isNew ? 'Scheme / Society' : 'Society Name', _societyCtrl),
                 if (!_isPlot && _category == PropertyCategory.commercial)
-                  _buildFormField('Shop / Unit', _flatTypeCtrl, hint: 'e.g., Shop 14'),
+                  _buildDropdownField<String>(
+                    'Property Type', _selectedFlatBhk,
+                    _commercialTypeList,
+                    (t) => t,
+                    (val) { if (val != null) setState(() => _selectedFlatBhk = val); },
+                    validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                  ),
                 if (!_isPlot && _category != PropertyCategory.commercial)
                   _buildDropdownField<String>(
                     'Flat / Bungalow', _selectedFlatBhk,
-                    ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'],
+                    _residentialBhkList,
                     (t) => t,
                     (val) { if (val != null) setState(() => _selectedFlatBhk = val); },
                     validator: (val) => val == null || val.isEmpty ? 'Required' : null,

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:postgres/postgres.dart';
 import 'dart:convert';
 import '../models/user_model.dart';
@@ -26,13 +27,19 @@ class DatabaseService {
     if (isConnected || _connecting) return;
     _connecting = true;
     try {
+      final host = dotenv.env['DB_HOST'] ?? 'one-more-deal.cnkisqqwmvy2.ap-south-1.rds.amazonaws.com';
+      final port = int.tryParse(dotenv.env['DB_PORT'] ?? '5432') ?? 5432;
+      final database = dotenv.env['DB_NAME'] ?? 'OneMoreDeal';
+      final username = dotenv.env['DB_USER'] ?? 'postgres';
+      final password = dotenv.env['DB_PASSWORD'] ?? 'MmKnDMm#14';
+
       _conn = await Connection.open(
         Endpoint(
-          host:     'one-more-deal.cnkisqqwmvy2.ap-south-1.rds.amazonaws.com',
-          port:     5432,
-          database: 'OneMoreDeal',
-          username: 'postgres',
-          password: 'MmKnDMm#14',
+          host:     host,
+          port:     port,
+          database: database,
+          username: username,
+          password: password,
         ),
         settings: const ConnectionSettings(sslMode: SslMode.require),
       );
@@ -145,6 +152,21 @@ class DatabaseService {
       '''),
       parameters: {'phone': phone},
     );
+  }
+
+  /// Retrieves list of brokers for the filter dropdown
+  Future<List<Map<String, dynamic>>> getAllBrokers() async {
+    final res = await (await _db).execute('''
+      SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS display_name, user_code
+      FROM users
+      WHERE user_type = 'Broker' AND is_active = true
+      ORDER BY display_name ASC
+    ''');
+    return res.map((r) => {
+      'id': r[0] as int,
+      'name': (r[1] as String?) ?? 'Unknown',
+      'code': r[2] as String?,
+    }).toList();
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -476,6 +498,29 @@ class DatabaseService {
       if (filter.maxPrice != null) {
         conditions.add('p.price <= @maxPrice');
         params['maxPrice'] = filter.maxPrice;
+      }
+      if (filter.searchQuery != null && filter.searchQuery!.trim().isNotEmpty) {
+        conditions.add('''
+           (LOWER(p.society_name) LIKE LOWER(@searchQuery) OR
+           LOWER(p.area) LIKE LOWER(@searchQuery) OR
+           LOWER(p.subarea) LIKE LOWER(@searchQuery) OR
+           LOWER(p.city) LIKE LOWER(@searchQuery) OR
+           LOWER(p.flat_type) LIKE LOWER(@searchQuery) OR
+           LOWER(u.company_name) LIKE LOWER(@searchQuery) OR
+           LOWER(u.name) LIKE LOWER(@searchQuery) OR
+           LOWER(p.category::text) LIKE LOWER(@searchQuery) OR
+           LOWER(p.listing_type::text) LIKE LOWER(@searchQuery) OR
+           LOWER(p.furnishing_status) LIKE LOWER(@searchQuery) OR
+           LOWER(p.availability) LIKE LOWER(@searchQuery) OR
+           LOWER(p.parking) LIKE LOWER(@searchQuery) OR
+           LOWER(u.user_type) LIKE LOWER(@searchQuery) OR
+           LOWER(p.price::text) LIKE LOWER(@searchQuery))
+        ''');
+        params['searchQuery'] = '%${filter.searchQuery!.trim()}%';
+      }
+      if (filter.brokerIds != null && filter.brokerIds!.isNotEmpty) {
+        conditions.add('u.id = ANY(@brokerIds)');
+        params['brokerIds'] = filter.brokerIds;
       }
     }
 

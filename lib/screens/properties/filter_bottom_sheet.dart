@@ -20,6 +20,9 @@ class FilterBottomSheet extends StatefulWidget {
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
   late PropertyFilter _filter;
+  List<Map<String, dynamic>> _allBrokers = [];
+  bool _isLoadingBrokers = true;
+  String _brokerSearchQuery = '';
 
   final TextEditingController _areaCtrl = TextEditingController();
   final TextEditingController _societyCtrl = TextEditingController();
@@ -41,11 +44,25 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       userTypeFilter: widget.currentFilter.userTypeFilter,
       minPrice: widget.currentFilter.minPrice,
       maxPrice: widget.currentFilter.maxPrice,
+      brokerIds: widget.currentFilter.brokerIds != null ? List.from(widget.currentFilter.brokerIds!) : null,
     );
     _areaCtrl.text = _filter.area ?? '';
     _societyCtrl.text = _filter.society ?? '';
     _minPriceCtrl.text = _filter.minPrice?.toStringAsFixed(0) ?? '';
     _maxPriceCtrl.text = _filter.maxPrice?.toStringAsFixed(0) ?? '';
+    _loadBrokers();
+  }
+
+  Future<void> _loadBrokers() async {
+    try {
+      final brokers = await PropertyService.getAllBrokers();
+      if (mounted) setState(() {
+        _allBrokers = brokers;
+        _isLoadingBrokers = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingBrokers = false);
+    }
   }
 
   @override
@@ -74,6 +91,106 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       _societyCtrl.clear();
       _minPriceCtrl.clear();
       _maxPriceCtrl.clear();
+    });
+  }
+
+  void _showBrokerSelectionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final filteredBrokers = _allBrokers.where((b) {
+              if (_brokerSearchQuery.isEmpty) return true;
+              final name = ((b['name'] as String?) ?? '').toLowerCase();
+              final code = ((b['code'] as String?) ?? '').toLowerCase();
+              final q = _brokerSearchQuery.toLowerCase();
+              return name.contains(q) || code.contains(q);
+            }).toList();
+
+            return Dialog(
+              backgroundColor: AppColors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Select Brokers', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.charcoal)),
+                    const SizedBox(height: 12),
+                    TextField(
+                      onChanged: (val) {
+                        setDialogState(() => _brokerSearchQuery = val);
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search broker name or code...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: _isLoadingBrokers
+                          ? const Center(child: CircularProgressIndicator())
+                          : _allBrokers.isEmpty
+                              ? const Center(child: Text('No brokers found.'))
+                              : ListView.builder(
+                                  itemCount: filteredBrokers.length,
+                                  itemBuilder: (context, index) {
+                                    final broker = filteredBrokers[index];
+                                    final id = broker['id'] as int;
+                                    final name = broker['name'] as String;
+                                    final code = broker['code'] as String?;
+                                    final isSelected = _filter.brokerIds?.contains(id) ?? false;
+
+                                    return CheckboxListTile(
+                                      title: Text(name, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
+                                      subtitle: code != null ? Text(code, style: GoogleFonts.inter(fontSize: 12, color: AppColors.iosTertiaryLabel)) : null,
+                                      value: isSelected,
+                                      dense: true,
+                                      controlAffinity: ListTileControlAffinity.leading,
+                                      onChanged: (checked) {
+                                        setDialogState(() {
+                                          _filter.brokerIds ??= [];
+                                          if (checked == true) {
+                                            _filter.brokerIds!.add(id);
+                                          } else {
+                                            _filter.brokerIds!.remove(id);
+                                          }
+                                        });
+                                        setState(() {});
+                                      },
+                                    );
+                                  },
+                                ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.iosSystemBlue,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () {
+                          _brokerSearchQuery = '';
+                          Navigator.pop(context);
+                        },
+                        child: Text('Done', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+       _brokerSearchQuery = '';
     });
   }
 
@@ -162,11 +279,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
 
     List<String> bhkOptions = [];
     if (isBuilder) {
-      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow', 'Shop', 'Office'];
+      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow', 'Office Spaces', 'Retail & Shops', 'Industrial & Warehousing', 'Co-working Spaces'];
     } else if (isResi) {
-      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'];
+      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow'];
     } else if (isComm) {
-      bhkOptions = ['Shop', 'Office'];
+      bhkOptions = ['Office Spaces', 'Retail & Shops', 'Industrial & Warehousing', 'Co-working Spaces'];
     }
 
     if (_filter.flatType != null && !bhkOptions.contains(_filter.flatType)) {
@@ -277,6 +394,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                               _filter.category = null;
                               _filter.listingType = null;
                               _filter.floorCategory = null;
+                              _filter.brokerIds = null;
                             }
                           });
                         },
@@ -310,6 +428,39 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           selected: _filter.listingType,
                           label: (t) => t.value,
                           onTap: (val) => setState(() => _filter.listingType = val),
+                        ),
+                      ],
+
+                      if (isBroker) ...[
+                        _sectionHeader('SPECIFIC BROKERS'),
+                        GestureDetector(
+                          onTap: _showBrokerSelectionDialog,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.iosCardBg,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.person_search_rounded, size: 18, color: AppColors.iosSystemBlue),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    (_filter.brokerIds?.isNotEmpty ?? false)
+                                        ? '${_filter.brokerIds!.length} Brokers Selected'
+                                        : 'Select Brokers',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: (_filter.brokerIds?.isNotEmpty ?? false) ? FontWeight.w600 : FontWeight.w500,
+                                      color: (_filter.brokerIds?.isNotEmpty ?? false) ? AppColors.iosSystemBlue : AppColors.charcoal,
+                                    ),
+                                  ),
+                                ),
+                                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.iosTertiaryLabel),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
 
