@@ -147,6 +147,21 @@ class DatabaseService {
     );
   }
 
+  /// Retrieves list of brokers for the filter dropdown
+  Future<List<Map<String, dynamic>>> getAllBrokers() async {
+    final res = await (await _db).execute('''
+      SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS display_name, user_code
+      FROM users
+      WHERE user_type = 'Broker' AND is_active = true
+      ORDER BY display_name ASC
+    ''');
+    return res.map((r) => {
+      'id': r[0] as int,
+      'name': (r[1] as String?) ?? 'Unknown',
+      'code': r[2] as String?,
+    }).toList();
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // SUBSCRIPTIONS
   // ═══════════════════════════════════════════════════════════════════════
@@ -476,6 +491,29 @@ class DatabaseService {
       if (filter.maxPrice != null) {
         conditions.add('p.price <= @maxPrice');
         params['maxPrice'] = filter.maxPrice;
+      }
+      if (filter.searchQuery != null && filter.searchQuery!.trim().isNotEmpty) {
+        conditions.add('''
+           (LOWER(p.society_name) LIKE LOWER(@searchQuery) OR
+           LOWER(p.area) LIKE LOWER(@searchQuery) OR
+           LOWER(p.subarea) LIKE LOWER(@searchQuery) OR
+           LOWER(p.city) LIKE LOWER(@searchQuery) OR
+           LOWER(p.flat_type) LIKE LOWER(@searchQuery) OR
+           LOWER(u.company_name) LIKE LOWER(@searchQuery) OR
+           LOWER(u.name) LIKE LOWER(@searchQuery) OR
+           LOWER(p.category::text) LIKE LOWER(@searchQuery) OR
+           LOWER(p.listing_type::text) LIKE LOWER(@searchQuery) OR
+           LOWER(p.furnishing_status) LIKE LOWER(@searchQuery) OR
+           LOWER(p.availability) LIKE LOWER(@searchQuery) OR
+           LOWER(p.parking) LIKE LOWER(@searchQuery) OR
+           LOWER(u.user_type) LIKE LOWER(@searchQuery) OR
+           LOWER(p.price::text) LIKE LOWER(@searchQuery))
+        ''');
+        params['searchQuery'] = '%${filter.searchQuery!.trim()}%';
+      }
+      if (filter.brokerIds != null && filter.brokerIds!.isNotEmpty) {
+        final idsStr = filter.brokerIds!.join(', ');
+        conditions.add('p.user_id IN ($idsStr)');
       }
     }
 

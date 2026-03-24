@@ -92,4 +92,10 @@ class PropertyService {
   static Future<List<String>> searchCityAreas(String query) async {
     return DatabaseService.instance.searchCityAreas(query);
   }
+
+  // ── Brokers List ───────────────────────────────────────────────────────
+  
+  static Future<List<Map<String, dynamic>>> getAllBrokers() async {
+    return DatabaseService.instance.getAllBrokers();
+  }
 }

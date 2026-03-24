@@ -85,9 +85,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         societyName: _isPlot ? null : _societyCtrl.text.trim(),
         flatType: _isPlot 
             ? null 
-            : (_category == PropertyCategory.commercial 
-                ? _flatTypeCtrl.text.trim() 
-                : _selectedFlatBhk),
+            : _selectedFlatBhk,
         areaValue: _isPlot ? double.tryParse(_areaValueCtrl.text.trim()) : null,
         builtUpArea: _isPlot ? null : (_selectedAreaType == 'Built-up Area' ? double.tryParse(_generalAreaCtrl.text.trim()) : null),
         carpetArea: _isPlot ? null : (_selectedAreaType == 'Carpet Area' ? double.tryParse(_generalAreaCtrl.text.trim()) : null),
@@ -329,11 +327,17 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
               _buildGroupedCard([
                 if (!_isPlot) _buildFormField(_isNew ? 'Scheme / Society' : 'Society Name', _societyCtrl),
                 if (!_isPlot && _category == PropertyCategory.commercial)
-                  _buildFormField('Shop / Unit', _flatTypeCtrl, hint: 'e.g., Shop 14'),
+                  _buildDropdownField<String>(
+                    'Property Type', _selectedFlatBhk,
+                    ['Office Spaces', 'Retail & Shops', 'Industrial & Warehousing', 'Co-working Spaces'],
+                    (t) => t,
+                    (val) { if (val != null) setState(() => _selectedFlatBhk = val); },
+                    validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                  ),
                 if (!_isPlot && _category != PropertyCategory.commercial)
                   _buildDropdownField<String>(
                     'Flat / Bungalow', _selectedFlatBhk,
-                    ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'],
+                    ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow'],
                     (t) => t,
                     (val) { if (val != null) setState(() => _selectedFlatBhk = val); },
                     validator: (val) => val == null || val.isEmpty ? 'Required' : null,
