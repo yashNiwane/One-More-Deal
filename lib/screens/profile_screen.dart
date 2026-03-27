@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
+import 'admin/admin_screen.dart';
 import 'landing_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -116,6 +117,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         (_) => false,
       );
     }
+  }
+
+  Future<void> _openAdminPanel() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AdminScreen()));
+  }
+
+  double get _profileBottomInset {
+    final safeInset = MediaQuery.of(context).padding.bottom;
+    // Keep profile content above the floating dock + home indicator area.
+    return 132 + safeInset;
   }
 
   @override
@@ -264,6 +277,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           AuthService.userName.isNotEmpty
                               ? AuthService.userName
                               : 'User',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -274,6 +289,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 4),
                         Text(
                           AuthService.userPhone,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: AppColors.white.withValues(alpha: 0.72),
@@ -347,16 +364,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 24),
         _buildSectionHeader('Account'),
         const SizedBox(height: 8),
-        _buildGroupedCard([
-          _buildTappableRow(
-            Icons.logout_rounded,
-            'Logout',
-            AppColors.iosDestructive,
-            _logout,
-            isLast: true,
-          ),
-        ]),
-        const SizedBox(height: 100),
+        _buildGroupedCard(
+          AuthService.isAdmin
+              ? [
+                  _buildTappableRow(
+                    Icons.admin_panel_settings_outlined,
+                    'Admin Panel',
+                    AppColors.primary,
+                    _openAdminPanel,
+                  ),
+                  _buildTappableRow(
+                    Icons.logout_rounded,
+                    'Logout',
+                    AppColors.iosDestructive,
+                    _logout,
+                    isLast: true,
+                  ),
+                ]
+              : [
+                  _buildTappableRow(
+                    Icons.logout_rounded,
+                    'Logout',
+                    AppColors.iosDestructive,
+                    _logout,
+                    isLast: true,
+                  ),
+                ],
+        ),
+        SizedBox(height: _profileBottomInset),
       ],
     );
   }
@@ -524,7 +559,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 100),
+          SizedBox(height: _profileBottomInset),
         ],
       ),
     );
@@ -589,24 +624,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Icon(icon, size: 20, color: AppColors.iosSystemBlue),
               const SizedBox(width: 12),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.charcoal,
+              Expanded(
+                flex: 5,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.charcoal,
+                  ),
                 ),
               ),
-              const Spacer(),
-              Flexible(
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 4,
                 child: Text(
                   value.isNotEmpty ? value : '-',
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 15,
                     color: AppColors.darkGray,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -648,6 +690,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                const Spacer(),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: color.withValues(alpha: 0.8),
+                ),
               ],
             ),
           ),
@@ -678,11 +726,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const Spacer(),
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  color: AppColors.darkGray,
+              Expanded(
+                child: Text(
+                  value.isNotEmpty ? value : '-',
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: AppColors.darkGray,
+                  ),
                 ),
               ),
             ],

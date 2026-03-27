@@ -25,7 +25,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   List<DailyCount> _newUsers = const [];
   List<DailyCount> _newListings = const [];
   Map<String, int> _categoryBreakdown = const {};
-
   @override
   void initState() {
     super.initState();
@@ -309,6 +308,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         value: stats['activeSubscriptions'] ?? 0,
         tint: AppColors.accent,
       ),
+      _StatTileData(
+        icon: Icons.payments_rounded,
+        label: 'Pending payments',
+        value: stats['pendingSubscriptionRequests'] ?? 0,
+        tint: const Color(0xFFDC2626),
+      ),
     ];
 
     return GridView.builder(
@@ -318,16 +323,16 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.34,
+        childAspectRatio: 1.85,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: AppColors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.05),
@@ -338,27 +343,38 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: item.tint.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(item.icon, color: item.tint, size: 20),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: item.tint.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(item.icon, color: item.tint, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      NumberFormat.compact().format(item.value),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.charcoal,
+                        letterSpacing: -0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
               ),
-              const Spacer(),
-              Text(
-                NumberFormat.compact().format(item.value),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.charcoal,
-                  letterSpacing: -0.7,
-                ),
-              ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 10),
               Text(
                 item.label,
                 style: GoogleFonts.inter(
@@ -366,6 +382,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   fontWeight: FontWeight.w600,
                   color: AppColors.darkGray,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../models/user_model.dart';
 import '../models/property_model.dart';
 import '../models/subscription_model.dart';
+import '../models/subscription_request_model.dart';
 import '../models/enquiry_model.dart';
 
 typedef DailyCount = ({DateTime day, int count});
@@ -162,6 +163,23 @@ class DatabaseService {
     }).toList();
   }
 
+  Future<void> _ensureSubscriptionRequestsTable() async {
+    await (await _db).execute('''
+      CREATE TABLE IF NOT EXISTS subscription_requests (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan_months INTEGER NOT NULL,
+        amount_paid NUMERIC(12, 2),
+        screenshot_base64 TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        rejection_reason TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        screenshot_updated_at TIMESTAMPTZ
+      )
+    ''');
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // SUBSCRIPTIONS
   // ═══════════════════════════════════════════════════════════════════════
@@ -226,6 +244,282 @@ class DatabaseService {
     );
     if (res.isEmpty) return null;
     return SubscriptionModel.fromMap(res.first.toColumnMap());
+  }
+
+  Future<SubscriptionRequestModel?> getLatestSubscriptionRequestForUser(
+    int userId,
+  ) async {
+    await _ensureSubscriptionRequestsTable();
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT r.*,
+               COALESCE(NULLIF(TRIM(u.company_name), ''), u.name) AS requester_name,
+               u.phone AS requester_phone
+        FROM subscription_requests r
+        JOIN users u ON u.id = r.user_id
+        WHERE r.user_id = @uid
+        ORDER BY r.updated_at DESC, r.created_at DESC
+        LIMIT 1
+      '''),
+      parameters: {'uid': userId},
+    );
+    if (res.isEmpty) return null;
+    return SubscriptionRequestModel.fromMap(res.first.toColumnMap());
+  }
+
+  Future<SubscriptionRequestModel?> upsertSubscriptionRequest({
+    required int userId,
+    required int planMonths,
+    required double amountPaid,
+    required String screenshotBase64,
+  }) async {
+    await _ensureSubscriptionRequestsTable();
+    try {
+      final existing = await getLatestSubscriptionRequestForUser(userId);
+      if (existing != null &&
+          existing.status != SubscriptionRequestStatus.approved &&
+          existing.status != SubscriptionRequestStatus.revoked) {
+        await (await _db).execute(
+          Sql.named('''
+            UPDATE subscription_requests
+            SET plan_months = @months,
+                amount_paid = @amount,
+                screenshot_base64 = @screenshot,
+                status = 'pending',
+                rejection_reason = NULL,
+                updated_at = NOW(),
+                screenshot_updated_at = NOW()
+            WHERE id = @id
+          '''),
+          parameters: {
+            'id': existing.id,
+            'months': planMonths,
+            'amount': amountPaid,
+            'screenshot': screenshotBase64,
+          },
+        );
+        return getLatestSubscriptionRequestForUser(userId);
+      }
+
+      final res = await (await _db).execute(
+        Sql.named('''
+          INSERT INTO subscription_requests (
+            user_id, plan_months, amount_paid, screenshot_base64, status,
+            created_at, updated_at, screenshot_updated_at
+          )
+          VALUES (@uid, @months, @amount, @screenshot, 'pending', NOW(), NOW(), NOW())
+          RETURNING id
+        '''),
+        parameters: {
+          'uid': userId,
+          'months': planMonths,
+          'amount': amountPaid,
+          'screenshot': screenshotBase64,
+        },
+      );
+      if (res.isEmpty) return null;
+      return getLatestSubscriptionRequestForUser(userId);
+    } catch (e) {
+      debugPrint('DB upsertSubscriptionRequest Error: $e');
+      return null;
+    }
+  }
+
+  Future<List<SubscriptionRequestModel>> getSubscriptionRequests({
+    SubscriptionRequestStatus? status,
+  }) async {
+    await _ensureSubscriptionRequestsTable();
+    final res = status == null
+        ? await (await _db).execute(
+            Sql.named('''
+              SELECT r.*,
+                     COALESCE(NULLIF(TRIM(u.company_name), ''), u.name) AS requester_name,
+                     u.phone AS requester_phone
+              FROM subscription_requests r
+              JOIN users u ON u.id = r.user_id
+              ORDER BY r.updated_at DESC, r.created_at DESC
+            '''),
+          )
+        : await (await _db).execute(
+            Sql.named('''
+              SELECT r.*,
+                     COALESCE(NULLIF(TRIM(u.company_name), ''), u.name) AS requester_name,
+                     u.phone AS requester_phone
+              FROM subscription_requests r
+              JOIN users u ON u.id = r.user_id
+              WHERE r.status = @status
+              ORDER BY r.updated_at DESC, r.created_at DESC
+            '''),
+            parameters: {'status': status.value},
+          );
+    return res
+        .map((row) => SubscriptionRequestModel.fromMap(row.toColumnMap()))
+        .toList(growable: false);
+  }
+
+  Future<void> approveSubscriptionRequest(int requestId) async {
+    await _ensureSubscriptionRequestsTable();
+    final db = await _db;
+    final ownerRes = await db.execute(
+      Sql.named('SELECT user_id, plan_months, amount_paid FROM subscription_requests WHERE id = @id LIMIT 1'),
+      parameters: {'id': requestId},
+    );
+    if (ownerRes.isEmpty) return;
+
+    final userId = ownerRes.first[0] as int;
+    final planMonths = ownerRes.first[1] as int;
+    final amountPaid = double.tryParse(ownerRes.first[2]?.toString() ?? '') ?? 0;
+
+    await db.execute(
+      Sql.named(
+        'UPDATE subscriptions SET is_active = false WHERE user_id = @uid AND is_active = true',
+      ),
+      parameters: {'uid': userId},
+    );
+
+    await db.execute(
+      Sql.named('''
+        UPDATE subscription_requests
+        SET status = 'approved',
+            rejection_reason = NULL,
+            updated_at = NOW()
+        WHERE id = @id
+      '''),
+      parameters: {
+        'id': requestId,
+      },
+    );
+
+    await createSubscription(
+      userId: userId,
+      planMonths: planMonths,
+      amountPaid: amountPaid,
+      paymentRef: 'ADMIN_APPROVED_REQUEST_$requestId',
+    );
+
+    await db.execute(
+      Sql.named('UPDATE users SET is_active = true, updated_at = NOW() WHERE id = @uid'),
+      parameters: {'uid': userId},
+    );
+  }
+
+  Future<void> rejectSubscriptionRequest(int requestId, String reason) async {
+    await _ensureSubscriptionRequestsTable();
+    await (await _db).execute(
+      Sql.named('''
+        UPDATE subscription_requests
+        SET status = 'rejected',
+            rejection_reason = @reason,
+            updated_at = NOW()
+        WHERE id = @id
+      '''),
+      parameters: {
+        'id': requestId,
+        'reason': reason,
+      },
+    );
+  }
+
+  Future<void> revokeSubscriptionRequest(int requestId, String reason) async {
+    await _ensureSubscriptionRequestsTable();
+    final db = await _db;
+    final res = await db.execute(
+      Sql.named('SELECT user_id FROM subscription_requests WHERE id = @id LIMIT 1'),
+      parameters: {'id': requestId},
+    );
+    if (res.isEmpty) return;
+    final userId = res.first[0] as int;
+
+    await db.execute(
+      Sql.named('''
+        UPDATE subscription_requests
+        SET status = 'revoked',
+            rejection_reason = @reason,
+            updated_at = NOW()
+        WHERE id = @id
+      '''),
+      parameters: {'id': requestId, 'reason': reason},
+    );
+
+    await db.execute(
+      Sql.named('UPDATE subscriptions SET is_active = false WHERE user_id = @uid AND is_active = true'),
+      parameters: {'uid': userId},
+    );
+
+    await db.execute(
+      Sql.named('UPDATE users SET is_active = false, updated_at = NOW() WHERE id = @uid'),
+      parameters: {'uid': userId},
+    );
+  }
+
+  Future<void> manuallyAssignSubscription({
+    required String phone,
+    required int planMonths,
+    required double amountPaid,
+  }) async {
+    await _ensureSubscriptionRequestsTable();
+    final user = await getUserByPhone(phone);
+    if (user == null) {
+      throw Exception('User not found for phone $phone');
+    }
+
+    await createSubscription(
+      userId: user.id,
+      planMonths: planMonths,
+      amountPaid: amountPaid,
+      paymentRef: 'ADMIN_MANUAL_${DateTime.now().millisecondsSinceEpoch}',
+    );
+
+    await (await _db).execute(
+      Sql.named('''
+        INSERT INTO subscription_requests (
+          user_id, plan_months, amount_paid, screenshot_base64, status,
+          created_at, updated_at
+        )
+        VALUES (@uid, @months, @amount, NULL, 'approved', NOW(), NOW())
+      '''),
+      parameters: {
+        'uid': user.id,
+        'months': planMonths,
+        'amount': amountPaid,
+      },
+    );
+  }
+
+  Future<void> blockUserByPhone({
+    required String phone,
+    required String reason,
+  }) async {
+    await _ensureSubscriptionRequestsTable();
+    final user = await getUserByPhone(phone);
+    if (user == null) {
+      throw Exception('User not found for phone $phone');
+    }
+
+    final db = await _db;
+    await db.execute(
+      Sql.named('UPDATE subscriptions SET is_active = false WHERE user_id = @uid AND is_active = true'),
+      parameters: {'uid': user.id},
+    );
+
+    await db.execute(
+      Sql.named('UPDATE users SET is_active = false, updated_at = NOW() WHERE id = @uid'),
+      parameters: {'uid': user.id},
+    );
+
+    await db.execute(
+      Sql.named('''
+        INSERT INTO subscription_requests (
+          user_id, plan_months, amount_paid, screenshot_base64, status,
+          rejection_reason, created_at, updated_at
+        )
+        VALUES (@uid, 0, 0, NULL, 'revoked', @reason, NOW(), NOW())
+      '''),
+      parameters: {
+        'uid': user.id,
+        'reason': reason,
+      },
+    );
   }
 
   /// Retrieves a user's phone number by ID (for contact feature).
@@ -481,8 +775,12 @@ class DatabaseService {
         params['furnishingStatus'] = filter.furnishingStatus;
       }
       if (filter.userTypeFilter != null) {
-        conditions.add('u.user_type = @userType');
-        params['userType'] = filter.userTypeFilter!.value;
+        if (filter.userTypeFilter == UserTypeFilter.builder) {
+          conditions.add("(u.user_type = 'Builder' OR u.user_type = 'Developer')");
+        } else {
+          conditions.add('u.user_type = @userType');
+          params['userType'] = filter.userTypeFilter!.value;
+        }
       }
       if (filter.minPrice != null) {
         conditions.add('p.price >= @minPrice');
@@ -532,7 +830,7 @@ class DatabaseService {
         ORDER BY
           CASE WHEN p.refreshed_at > NOW() - INTERVAL '1 day' THEN 0 ELSE 1 END,
           p.refreshed_at DESC,
-          CASE WHEN u.user_type = 'Builder' THEN 0 ELSE 1 END,
+          CASE WHEN u.user_type IN ('Builder', 'Developer') THEN 0 ELSE 1 END,
           p.society_name NULLS LAST
       '''),
       parameters: params,
@@ -659,6 +957,13 @@ class DatabaseService {
       WHERE is_active = true AND ends_at > NOW()
     ''');
 
+    await _ensureSubscriptionRequestsTable();
+    final pendingSubscriptionRequests = await count('''
+      SELECT COUNT(*)
+      FROM subscription_requests
+      WHERE status = 'pending'
+    ''');
+
     return {
       'totalUsers': totalUsers,
       'activeUsers': activeUsers,
@@ -667,6 +972,7 @@ class DatabaseService {
       'pendingApprovals': pendingApprovals,
       'builderProjects': builderProjects,
       'activeSubscriptions': activeSubscriptions,
+      'pendingSubscriptionRequests': pendingSubscriptionRequests,
     };
   }
 

@@ -263,6 +263,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   @override
   Widget build(BuildContext context) {
     final isBuilder = AuthService.userType == 'Builder';
+    final flatOptions = isBuilder
+        ? ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow']
+        : ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'];
 
     return Scaffold(
       backgroundColor: AppColors.iosGroupedBg,
@@ -337,7 +340,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 if (!_isPlot && _category != PropertyCategory.commercial)
                   _buildDropdownField<String>(
                     'Flat / Bungalow', _selectedFlatBhk,
-                    ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow'],
+                    flatOptions,
                     (t) => t,
                     (val) { if (val != null) setState(() => _selectedFlatBhk = val); },
                     validator: (val) => val == null || val.isEmpty ? 'Required' : null,

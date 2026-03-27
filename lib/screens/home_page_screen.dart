@@ -11,12 +11,13 @@ import 'properties/add_property_screen.dart';
 import 'properties/filter_bottom_sheet.dart';
 
 class HomePageScreen extends StatefulWidget {
-  final void Function(int propertyId, UserTypeFilter? userTypeHint)? onOpenDiscoverProperty;
+  final void Function(int propertyId, UserTypeFilter? userTypeHint)?
+  onOpenDiscoverProperty;
   final void Function(PropertyFilter filter)? onOpenDiscoverWithFilter;
   final void Function(int sortIndex)? onOpenDiscoverWithSort;
 
   const HomePageScreen({
-    super.key, 
+    super.key,
     this.onOpenDiscoverProperty,
     this.onOpenDiscoverWithFilter,
     this.onOpenDiscoverWithSort,
@@ -45,6 +46,8 @@ class _HomePageScreenState extends State<HomePageScreen> {
   List<PropertyModel> _properties = [];
   _HomeSortOption _sortOption = _HomeSortOption.newest;
   String _searchQuery = '';
+  PropertyCategory? _selectedPresetCategory;
+  UserTypeFilter? _selectedPresetUserType;
 
   @override
   void initState() {
@@ -61,7 +64,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
   Future<void> _loadProperties() async {
     setState(() => _isLoading = true);
     try {
-      final items = await PropertyService.getProperties(filter: PropertyFilter(city: 'Pune'));
+      final items = await PropertyService.getProperties(
+        filter: PropertyFilter(city: 'Pune'),
+      );
       if (mounted) {
         setState(() => _properties = items);
       }
@@ -96,17 +101,56 @@ class _HomePageScreenState extends State<HomePageScreen> {
   }
 
   void _openFilterBottomSheet() {
+    _openPresetFilter(PropertyFilter(city: 'Pune'));
+  }
+
+  void _openPresetFilter(PropertyFilter filter) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FilterBottomSheet(
-        currentFilter: PropertyFilter(city: 'Pune'),
+        currentFilter: filter,
         onApply: (newFilter) {
           widget.onOpenDiscoverWithFilter?.call(newFilter);
         },
       ),
     );
+  }
+
+  void _openPredefinedFilter({
+    required PropertyCategory? category,
+    required ListingType? listingType,
+    UserTypeFilter? userTypeFilter,
+  }) {
+    final filter = PropertyFilter(city: 'Pune')
+      ..category = category
+      ..listingType = listingType
+      ..userTypeFilter = userTypeFilter;
+    _openPresetFilter(filter);
+  }
+
+  void _selectPrimaryPreset({
+    PropertyCategory? category,
+    UserTypeFilter? userTypeFilter,
+  }) {
+    setState(() {
+      _selectedPresetCategory = category;
+      _selectedPresetUserType = userTypeFilter;
+      if (userTypeFilter == UserTypeFilter.builder) {
+        _selectedPresetCategory = null;
+      } else {
+        _selectedPresetUserType = null;
+      }
+    });
+
+    if (userTypeFilter == UserTypeFilter.builder) {
+      _openPredefinedFilter(
+        category: null,
+        listingType: null,
+        userTypeFilter: UserTypeFilter.builder,
+      );
+    }
   }
 
   void _showSortMenu() {
@@ -209,10 +253,6 @@ class _HomePageScreenState extends State<HomePageScreen> {
     return filtered;
   }
 
-  List<PropertyModel> get _featuredProperties =>
-      _visibleProperties.take(6).toList();
-
-
   String _formatPrice(double price) {
     if (price >= 10000000) {
       final crore = price / 10000000;
@@ -225,64 +265,22 @@ class _HomePageScreenState extends State<HomePageScreen> {
     return 'Rs ${NumberFormat.decimalPattern('en_IN').format(price.toInt())}';
   }
 
-  String _cardLocation(PropertyModel property) {
-    final parts = <String>[
-      if ((property.subarea ?? '').trim().isNotEmpty) property.subarea!.trim(),
-      property.area,
-      property.city,
-    ];
-    return parts.join(', ');
-  }
-
-  Future<void> _openInDiscover(PropertyModel property) async {
-    final propertyId = property.id;
-    if (propertyId == null) return;
-    final isBuilder =
-        property.listingType == ListingType.newLaunch ||
-        property.category == PropertyCategory.newProperty;
-    widget.onOpenDiscoverProperty?.call(
-      propertyId,
-      isBuilder ? UserTypeFilter.builder : null,
-    );
-  }
-
-  void _updateQuickFilter({
-    UserTypeFilter? userTypeFilter,
-    PropertyCategory? category,
-    ListingType? listingType,
-  }) {
-    final next = PropertyFilter(city: 'Pune');
-    if (userTypeFilter != null) next.userTypeFilter = userTypeFilter;
-    if (category != null) next.category = category;
-    if (listingType != null) next.listingType = listingType;
-    widget.onOpenDiscoverWithFilter?.call(next);
-  }
-
   @override
   Widget build(BuildContext context) {
     final visible = _visibleProperties;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5F9),
+      backgroundColor: AppColors.iosGroupedBg,
       body: RefreshIndicator(
         onRefresh: _loadProperties,
         color: AppColors.accent,
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: _buildHeroSection(visible.length)),
+            SliverToBoxAdapter(child: _buildHeroSection()),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
                 child: _buildQuickActionRow(),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: _buildSectionHeader(
-                  title: 'Fresh Matches',
-                  subtitle: 'Sorted, searchable, and ready to close.',
-                ),
               ),
             ),
             if (_isLoading)
@@ -296,22 +294,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                   padding: const EdgeInsets.all(16),
                   child: _buildEmptyState(),
                 ),
-              )
-            else ...[
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 254,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    scrollDirection: Axis.horizontal,
-                    itemBuilder: (_, index) =>
-                        _buildFeatureCard(_featuredProperties[index]),
-                    separatorBuilder: (_, __) => const SizedBox(width: 14),
-                    itemCount: _featuredProperties.length,
-                  ),
-                ),
               ),
-            ],
             const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
           ],
         ),
@@ -319,15 +302,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
     );
   }
 
-  Widget _buildHeroSection(int resultCount) {
+  Widget _buildHeroSection() {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF081126), Color(0xFF10224A), Color(0xFF1C3F86)],
-        ),
-      ),
+      decoration: const BoxDecoration(gradient: AppColors.heroGradient),
       child: Stack(
         children: [
           Positioned(
@@ -338,7 +315,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
               height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.accent.withValues(alpha: 0.12),
+                color: AppColors.accent.withValues(alpha: 0.10),
               ),
             ),
           ),
@@ -350,117 +327,30 @@ class _HomePageScreenState extends State<HomePageScreen> {
               height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.white.withValues(alpha: 0.06),
+                color: AppColors.primaryLight.withValues(alpha: 0.10),
               ),
             ),
           ),
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 34),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Container(
-                            //   padding: const EdgeInsets.symmetric(
-                            //     horizontal: 10,
-                            //     vertical: 6,
-                            //   ),
-                            //   decoration: BoxDecoration(
-                            //     color: AppColors.white.withValues(alpha: 0.08),
-                            //     borderRadius: BorderRadius.circular(999),
-                            //     border: Border.all(
-                            //       color: AppColors.white.withValues(
-                            //         alpha: 0.08,
-                            //       ),
-                            //     ),
-                            //   ),
-                            //   child: Text(
-                            //     'Premium Home',
-                            //     style: GoogleFonts.inter(
-                            //       color: AppColors.accentLight,
-                            //       fontSize: 11,
-                            //       fontWeight: FontWeight.w700,
-                            //       letterSpacing: 0.4,
-                            //     ),
-                            //   ),
-                            // ),
-                            // const SizedBox(height: 12),
-                            Text(
-                              'Find one more\ndeal with clarity.',
-                              style: GoogleFonts.plusJakartaSans(
-                                color: AppColors.white,
-                                fontSize: 31,
-                                fontWeight: FontWeight.w800,
-                                height: 1.08,
-                                letterSpacing: -1,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            // Text(
-                            //   'Search, filter, sort, and post from one polished command center.',
-                            //   style: GoogleFonts.inter(
-                            //     color: AppColors.white.withValues(alpha: 0.74),
-                            //     fontSize: 13,
-                            //     height: 1.5,
-                            //     fontWeight: FontWeight.w500,
-                            //   ),
-                            // ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: _openAddProperty,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 13,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: AppColors.goldGradient,
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.accent.withValues(alpha: 0.28),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.add_business_rounded,
-                                color: AppColors.primary,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Post',
-                                style: GoogleFonts.inter(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Find one more\ndeal with clarity.',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: AppColors.white,
+                      fontSize: 31,
+                      fontWeight: FontWeight.w800,
+                      height: 1.08,
+                      letterSpacing: -1,
+                    ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 26),
                   Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: AppColors.white,
                       borderRadius: BorderRadius.circular(30),
@@ -502,7 +392,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
                                   if (value.trim().isNotEmpty) {
                                     final filter = PropertyFilter(city: 'Pune');
                                     filter.searchQuery = value.trim();
-                                    widget.onOpenDiscoverWithFilter?.call(filter);
+                                    widget.onOpenDiscoverWithFilter?.call(
+                                      filter,
+                                    );
                                   }
                                 },
                                 style: GoogleFonts.inter(
@@ -540,39 +432,6 @@ class _HomePageScreenState extends State<HomePageScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 14),
-                        Container(
-                          height: 1,
-                          color: AppColors.lightGray.withValues(alpha: 0.9),
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildHeroMetricTile(
-                                label: 'Market',
-                                value: 'Pune',
-                                icon: Icons.location_on_outlined,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _buildHeroMetricTile(
-                                label: 'Filters',
-                                value: 'Any',
-                                icon: Icons.filter_alt_outlined,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _buildHeroMetricTile(
-                                label: 'Matches',
-                                value: '$resultCount',
-                                icon: Icons.home_work_outlined,
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -602,39 +461,8 @@ class _HomePageScreenState extends State<HomePageScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Explore faster',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.charcoal,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  _sortOption.label,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
+          _buildQuickActionHeader(),
+          const SizedBox(height: 8),
           Text(
             'Core tools for finding the right listing without leaving Home.',
             style: GoogleFonts.inter(
@@ -643,117 +471,280 @@ class _HomePageScreenState extends State<HomePageScreen> {
               height: 1.45,
             ),
           ),
+          const SizedBox(height: 20),
+          _buildQuickActionButtons(),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: _buildActionCard(
-                  title: 'Filters',
-                  subtitle: 'Refine listings',
-                  icon: Icons.tune_rounded,
-                  accent: const Color(0xFF0EA5E9),
-                  onTap: _openFilterBottomSheet,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 1,
-                child: GestureDetector(
-                  key: _sortKey,
-                  onTap: _showSortMenu,
-                  child: _buildActionCard(
-                    title: 'Sort',
-                    subtitle: _sortOption.label,
-                    icon: Icons.swap_vert_rounded,
-                    accent: const Color(0xFFF59E0B),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 42,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildQuickFilterChip(
-                  label: 'Builder',
-                  selected: false,
-                  onTap: () => _updateQuickFilter(
-                    userTypeFilter: UserTypeFilter.builder,
-                  ),
-                ),
-                _buildQuickFilterChip(
-                  label: 'Broker',
-                  selected: false,
-                  onTap: () =>
-                      _updateQuickFilter(userTypeFilter: UserTypeFilter.broker),
-                ),
-                _buildQuickFilterChip(
-                  label: 'Residential',
-                  selected: false,
-                  onTap: () => _updateQuickFilter(
-                    category: PropertyCategory.residential,
-                  ),
-                ),
-                _buildQuickFilterChip(
-                  label: 'Commercial',
-                  selected: false,
-                  onTap: () =>
-                      _updateQuickFilter(category: PropertyCategory.commercial),
-                ),
-                _buildQuickFilterChip(
-                  label: 'Rent',
-                  selected: false,
-                  onTap: () =>
-                      _updateQuickFilter(listingType: ListingType.rent),
-                ),
-                _buildQuickFilterChip(
-                  label: 'Resale',
-                  selected: false,
-                  onTap: () =>
-                      _updateQuickFilter(listingType: ListingType.resale),
-                ),
-              ],
-            ),
-          ),
+          _buildPresetSelector(),
         ],
       ),
     );
   }
 
-  Widget _buildActionCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
+  Widget _buildQuickActionHeader() {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Explore faster',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.charcoal,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            _sortOption.label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildCTAButton(
+            label: 'Filters',
+            subtitle: 'Refine listings',
+            icon: Icons.tune_rounded,
+            accent: AppColors.primaryLight,
+            onTap: _openFilterBottomSheet,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildCTAButton(
+            key: _sortKey,
+            label: 'Sort',
+            subtitle: _sortOption.label,
+            icon: Icons.swap_vert_rounded,
+            accent: AppColors.accent,
+            onTap: _showSortMenu,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPresetSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Start with a property type.',
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.charcoal,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: _buildPresetChip(
+                label: 'Residential',
+                accent: AppColors.primaryLight,
+                selected:
+                    _selectedPresetCategory == PropertyCategory.residential,
+                onTap: () => _selectPrimaryPreset(
+                  category: PropertyCategory.residential,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: _buildPresetChip(
+                label: 'Commercial',
+                accent: AppColors.accent,
+                selected:
+                    _selectedPresetCategory == PropertyCategory.commercial,
+                onTap: () =>
+                    _selectPrimaryPreset(category: PropertyCategory.commercial),
+              ),
+            ),
+          ],
+        ),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeOutCubic,
+          child: _selectedPresetCategory == null
+              ? const SizedBox.shrink()
+              : Padding(
+                  key: ValueKey(_selectedPresetCategory),
+                  padding: const EdgeInsets.only(top: 22),
+                  child: _buildListingTypeSelector(),
+                ),
+        ),
+        const SizedBox(height: 18),
+        SizedBox(
+          width: double.infinity,
+          child: _buildPresetChip(
+            label: 'Builder',
+            accent: AppColors.primary,
+            selected: _selectedPresetUserType == UserTypeFilter.builder,
+            onTap: () =>
+                _selectPrimaryPreset(userTypeFilter: UserTypeFilter.builder),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListingTypeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'choose a listing type.',
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.charcoal,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: _buildPresetChip(
+                label: 'Rent',
+                accent: AppColors.info,
+                selected: false,
+                onTap: () => _openPredefinedFilter(
+                  category: _selectedPresetCategory,
+                  listingType: ListingType.rent,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: _buildPresetChip(
+                label: 'Resale',
+                accent: AppColors.accent,
+                selected: false,
+                onTap: () => _openPredefinedFilter(
+                  category: _selectedPresetCategory,
+                  listingType: ListingType.resale,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPresetChip({
+    required String label,
     required Color accent,
-    VoidCallback? onTap,
+    required bool selected,
+    required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: selected
+              ? accent.withValues(alpha: 0.14)
+              : accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected
+                ? accent.withValues(alpha: 0.38)
+                : accent.withValues(alpha: 0.18),
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.16),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? accent : AppColors.charcoal,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCTAButton({
+    Key? key,
+    required String label,
+    required String subtitle,
+    required IconData icon,
+    required Color accent,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      key: key,
+      onTap: onTap,
       child: Container(
-        height: 112,
+        height: 86,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [accent.withValues(alpha: 0.12), AppColors.white],
+            colors: [accent.withValues(alpha: 0.14), AppColors.white],
           ),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: accent.withValues(alpha: 0.14)),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: accent.withValues(alpha: 0.16)),
           boxShadow: [
             BoxShadow(
-              color: accent.withValues(alpha: 0.08),
+              color: accent.withValues(alpha: 0.12),
               blurRadius: 18,
-              offset: const Offset(0, 8),
+              offset: const Offset(0, 10),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
             Container(
               width: 34,
@@ -764,124 +755,42 @@ class _HomePageScreenState extends State<HomePageScreen> {
               ),
               child: Icon(icon, color: accent, size: 18),
             ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: AppColors.charcoal,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                subtitle,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.darkGray,
-                  height: 1.2,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkGray,
+                    ),
+                  ),
+                ],
               ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: AppColors.iosSecondaryLabel,
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildQuickFilterChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 10),
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: selected
-                ? const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryLight],
-                  )
-                : null,
-            color: selected ? null : const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected ? AppColors.primary : AppColors.lightGray,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.16),
-                      blurRadius: 14,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: selected ? AppColors.white : AppColors.charcoal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader({
-    required String title,
-    required String subtitle,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.charcoal,
-                  letterSpacing: -0.8,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: AppColors.darkGray,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          width: 44,
-          height: 4,
-          decoration: BoxDecoration(
-            gradient: AppColors.goldGradient,
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ),
-      ],
     );
   }
 
@@ -967,249 +876,6 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard(PropertyModel property) {
-    final isBuilder =
-        property.listingType == ListingType.newLaunch ||
-        property.category == PropertyCategory.newProperty;
-    final displayTitle = property.societyName?.trim().isNotEmpty == true
-        ? property.societyName!.trim()
-        : isBuilder
-        ? 'Untitled Project'
-        : property.flatType ?? 'Property';
-    final accent = isBuilder ? AppColors.accent : AppColors.iosSystemBlue;
-    return GestureDetector(
-      onTap: () => _openInDiscover(property),
-      child: Container(
-        width: 308,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isBuilder
-                ? const [Color(0xFF1B1530), Color(0xFF3F2A17)]
-                : const [Color(0xFF0E1C3D), Color(0xFF1B3D7A)],
-          ),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: accent.withValues(alpha: 0.22)),
-          boxShadow: [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.18),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: -18,
-              right: -8,
-              child: Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.white.withValues(alpha: 0.06),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          isBuilder
-                              ? 'Builder Project'
-                              : property.listingType.value,
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.white,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        DateFormat('d MMM').format(
-                          property.refreshedAt ??
-                              property.postedAt ??
-                              DateTime.now(),
-                        ),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.white.withValues(alpha: 0.72),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  if (property.price != null) ...[
-                    Text(
-                      _formatPrice(property.price!),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.white,
-                        letterSpacing: -0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  Text(
-                    displayTitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.white,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 14,
-                        color: AppColors.accentLight,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          _cardLocation(property),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.white.withValues(alpha: 0.74),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if ((property.flatType ?? '').isNotEmpty)
-                        _buildMiniStat(
-                          property.flatType!,
-                          Icons.king_bed_outlined,
-                          dark: true,
-                        ),
-                      if (property.carpetArea != null)
-                        _buildMiniStat(
-                          '${property.carpetArea!.toStringAsFixed(0)} sqft',
-                          Icons.square_foot_rounded,
-                          dark: true,
-                        ),
-                      if (property.totalBuildings != null)
-                        _buildMiniStat(
-                          '${property.totalBuildings} towers',
-                          Icons.apartment_rounded,
-                          dark: true,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMiniStat(String value, IconData icon, {bool dark = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: dark ? AppColors.white.withValues(alpha: 0.12) : AppColors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: dark
-              ? AppColors.white.withValues(alpha: 0.14)
-              : AppColors.iosSeparator.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: dark ? AppColors.accentLight : AppColors.iosSecondaryLabel,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: dark ? AppColors.white : AppColors.charcoal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroMetricTile({
-    required String label,
-    required String value,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: AppColors.primaryLight),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.charcoal,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkGray,
-            ),
           ),
         ],
       ),

@@ -44,7 +44,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       userTypeFilter: widget.currentFilter.userTypeFilter,
       minPrice: widget.currentFilter.minPrice,
       maxPrice: widget.currentFilter.maxPrice,
-      brokerIds: widget.currentFilter.brokerIds != null ? List.from(widget.currentFilter.brokerIds!) : null,
+      brokerIds: widget.currentFilter.brokerIds != null
+          ? List.from(widget.currentFilter.brokerIds!)
+          : null,
     );
     _areaCtrl.text = _filter.area ?? '';
     _societyCtrl.text = _filter.society ?? '';
@@ -56,10 +58,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   Future<void> _loadBrokers() async {
     try {
       final brokers = await PropertyService.getAllBrokers();
-      if (mounted) setState(() {
-        _allBrokers = brokers;
-        _isLoadingBrokers = false;
-      });
+      if (mounted) {
+        setState(() {
+          _allBrokers = brokers;
+          _isLoadingBrokers = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _isLoadingBrokers = false);
     }
@@ -77,7 +81,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   void _applyFilters() {
     _filter.city = 'Pune';
     _filter.area = _areaCtrl.text.trim().isEmpty ? null : _areaCtrl.text.trim();
-    _filter.society = _societyCtrl.text.trim().isEmpty ? null : _societyCtrl.text.trim();
+    _filter.society = _societyCtrl.text.trim().isEmpty
+        ? null
+        : _societyCtrl.text.trim();
     _filter.minPrice = double.tryParse(_minPriceCtrl.text.trim());
     _filter.maxPrice = double.tryParse(_maxPriceCtrl.text.trim());
     widget.onApply(_filter);
@@ -110,14 +116,23 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
 
             return Dialog(
               backgroundColor: AppColors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Container(
                 padding: const EdgeInsets.all(16),
                 height: MediaQuery.of(context).size.height * 0.6,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Select Brokers', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.charcoal)),
+                    Text(
+                      'Select Brokers',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.charcoal,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     TextField(
                       onChanged: (val) {
@@ -127,7 +142,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         hintText: 'Search broker name or code...',
                         prefixIcon: const Icon(Icons.search, size: 20),
                         contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -135,36 +152,52 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       child: _isLoadingBrokers
                           ? const Center(child: CircularProgressIndicator())
                           : _allBrokers.isEmpty
-                              ? const Center(child: Text('No brokers found.'))
-                              : ListView.builder(
-                                  itemCount: filteredBrokers.length,
-                                  itemBuilder: (context, index) {
-                                    final broker = filteredBrokers[index];
-                                    final id = broker['id'] as int;
-                                    final name = broker['name'] as String;
-                                    final code = broker['code'] as String?;
-                                    final isSelected = _filter.brokerIds?.contains(id) ?? false;
-                                    
-                                    return CheckboxListTile(
-                                      title: Text(name, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
-                                      subtitle: code != null ? Text(code, style: GoogleFonts.inter(fontSize: 12, color: AppColors.iosTertiaryLabel)) : null,
-                                      value: isSelected,
-                                      dense: true,
-                                      controlAffinity: ListTileControlAffinity.leading,
-                                      onChanged: (checked) {
-                                        setDialogState(() {
-                                          _filter.brokerIds ??= [];
-                                          if (checked == true) {
-                                            _filter.brokerIds!.add(id);
-                                          } else {
-                                            _filter.brokerIds!.remove(id);
-                                          }
-                                        });
-                                        setState(() {});
-                                      },
-                                    );
+                          ? const Center(child: Text('No brokers found.'))
+                          : ListView.builder(
+                              itemCount: filteredBrokers.length,
+                              itemBuilder: (context, index) {
+                                final broker = filteredBrokers[index];
+                                final id = broker['id'] as int;
+                                final name = broker['name'] as String;
+                                final code = broker['code'] as String?;
+                                final isSelected =
+                                    _filter.brokerIds?.contains(id) ?? false;
+
+                                return CheckboxListTile(
+                                  title: Text(
+                                    name,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  subtitle: code != null
+                                      ? Text(
+                                          code,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            color: AppColors.iosTertiaryLabel,
+                                          ),
+                                        )
+                                      : null,
+                                  value: isSelected,
+                                  dense: true,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
+                                  onChanged: (checked) {
+                                    setDialogState(() {
+                                      _filter.brokerIds ??= [];
+                                      if (checked == true) {
+                                        _filter.brokerIds!.add(id);
+                                      } else {
+                                        _filter.brokerIds!.remove(id);
+                                      }
+                                    });
+                                    setState(() {});
                                   },
-                                ),
+                                );
+                              },
+                            ),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -172,14 +205,22 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.iosSystemBlue,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         onPressed: () {
                           _brokerSearchQuery = '';
                           Navigator.pop(context);
                         },
-                        child: Text('Done', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+                        child: Text(
+                          'Done',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -190,7 +231,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         );
       },
     ).then((_) {
-       _brokerSearchQuery = '';
+      _brokerSearchQuery = '';
     });
   }
 
@@ -232,7 +273,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             decoration: BoxDecoration(
               color: sel ? color : AppColors.iosCardBg,
               borderRadius: BorderRadius.circular(20),
-              border: sel ? null : Border.all(color: AppColors.iosSeparator.withValues(alpha: 0.5)),
+              border: sel
+                  ? null
+                  : Border.all(
+                      color: AppColors.iosSeparator.withValues(alpha: 0.5),
+                    ),
             ),
             child: Text(
               label(item),
@@ -248,18 +293,31 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     );
   }
 
-  Widget _textField(TextEditingController ctrl, String hint, {bool isNumber = false}) {
+  Widget _textField(
+    TextEditingController ctrl,
+    String hint, {
+    bool isNumber = false,
+  }) {
     return TextField(
       controller: ctrl,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       style: GoogleFonts.inter(fontSize: 14, color: AppColors.charcoal),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(color: AppColors.iosTertiaryLabel, fontSize: 13),
+        hintStyle: GoogleFonts.inter(
+          color: AppColors.iosTertiaryLabel,
+          fontSize: 13,
+        ),
         filled: true,
         fillColor: AppColors.iosCardBg,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 10,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: AppColors.iosSystemBlue, width: 1.5),
@@ -270,20 +328,39 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    bool isBroker = _filter.userTypeFilter == null || _filter.userTypeFilter == UserTypeFilter.broker;
+    bool isBroker =
+        _filter.userTypeFilter == null ||
+        _filter.userTypeFilter == UserTypeFilter.broker;
     bool isBuilder = _filter.userTypeFilter == UserTypeFilter.builder;
 
-    bool isResi = _filter.category == null || _filter.category == PropertyCategory.residential;
+    bool isResi =
+        _filter.category == null ||
+        _filter.category == PropertyCategory.residential;
     bool isComm = _filter.category == PropertyCategory.commercial;
     bool isPlot = _filter.category == PropertyCategory.plot;
 
     List<String> bhkOptions = [];
     if (isBuilder) {
-      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow', 'Office Spaces', 'Retail & Shops', 'Industrial & Warehousing', 'Co-working Spaces'];
+      bhkOptions = [
+        '1 BHK',
+        '2 BHK',
+        '3 BHK',
+        '4 BHK',
+        'Bungalow',
+        'Office Spaces',
+        'Retail & Shops',
+        'Industrial & Warehousing',
+        'Co-working Spaces',
+      ];
     } else if (isResi) {
-      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow'];
+      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'];
     } else if (isComm) {
-      bhkOptions = ['Office Spaces', 'Retail & Shops', 'Industrial & Warehousing', 'Co-working Spaces'];
+      bhkOptions = [
+        'Office Spaces',
+        'Retail & Shops',
+        'Industrial & Warehousing',
+        'Co-working Spaces',
+      ];
     }
 
     if (_filter.flatType != null && !bhkOptions.contains(_filter.flatType)) {
@@ -291,8 +368,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     }
 
     bool showSociety = !isPlot;
-    bool showBhk = !isPlot;
-    bool showFloor = !isPlot;
+    bool showBhk = !isPlot && !isBuilder;
+    bool showFloor = !isPlot && !isBuilder;
     bool showListingType = isBroker;
     bool showSubcategory = isBroker;
 
@@ -312,7 +389,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               // Drag handle
               Container(
                 margin: const EdgeInsets.only(top: 8),
-                width: 36, height: 5,
+                width: 36,
+                height: 5,
                 decoration: BoxDecoration(
                   color: AppColors.iosSeparator,
                   borderRadius: BorderRadius.circular(3),
@@ -321,22 +399,40 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
 
               // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Text(
                       'Filter',
-                      style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.charcoal, letterSpacing: -0.5),
+                      style: GoogleFonts.inter(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.charcoal,
+                        letterSpacing: -0.5,
+                      ),
                     ),
                     const Spacer(),
                     GestureDetector(
                       onTap: _clearFilters,
-                      child: Text('Reset All', style: GoogleFonts.inter(color: AppColors.iosSystemBlue, fontWeight: FontWeight.w600, fontSize: 14)),
+                      child: Text(
+                        'Reset All',
+                        style: GoogleFonts.inter(
+                          color: AppColors.iosSystemBlue,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              Container(height: 0.5, color: AppColors.iosSeparator.withValues(alpha: 0.4)),
+              Container(
+                height: 0.5,
+                color: AppColors.iosSeparator.withValues(alpha: 0.4),
+              ),
 
               // Scrollable filters
               Expanded(
@@ -351,19 +447,39 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       // 1. City (fixed)
                       _sectionHeader('CITY'),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(color: AppColors.iosCardBg, borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.iosCardBg,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: Row(
                           children: [
-                            Icon(Icons.location_city_rounded, size: 16, color: AppColors.iosSecondaryLabel),
+                            Icon(
+                              Icons.location_city_rounded,
+                              size: 16,
+                              color: AppColors.iosSecondaryLabel,
+                            ),
                             const SizedBox(width: 8),
-                            Text('Pune', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.charcoal)),
+                            Text(
+                              'Pune',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.charcoal,
+                              ),
+                            ),
                             const Spacer(),
-                            Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.iosTertiaryLabel),
+                            Icon(
+                              Icons.lock_outline_rounded,
+                              size: 14,
+                              color: AppColors.iosTertiaryLabel,
+                            ),
                           ],
                         ),
                       ),
@@ -382,15 +498,22 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       _sectionHeader('PROPERTY CATEGORY'),
                       _chipGroup<UserTypeFilter>(
                         items: UserTypeFilter.values,
-                        selected: _filter.userTypeFilter ?? UserTypeFilter.broker,
-                        label: (u) => u == UserTypeFilter.builder ? '🏗 Builder' : '🤝 Broker',
-                        activeColor: (_filter.userTypeFilter ?? UserTypeFilter.broker) == UserTypeFilter.builder
+                        selected:
+                            _filter.userTypeFilter ?? UserTypeFilter.broker,
+                        label: (u) => u == UserTypeFilter.builder
+                            ? '🏗 Builder'
+                            : '🤝 Broker',
+                        activeColor:
+                            (_filter.userTypeFilter ?? UserTypeFilter.broker) ==
+                                UserTypeFilter.builder
                             ? const Color(0xFFE69A1A)
                             : AppColors.iosSystemBlue,
                         onTap: (val) {
                           setState(() {
-                            _filter.userTypeFilter = val ?? UserTypeFilter.broker;
-                            if (_filter.userTypeFilter == UserTypeFilter.builder) {
+                            _filter.userTypeFilter =
+                                val ?? UserTypeFilter.broker;
+                            if (_filter.userTypeFilter ==
+                                UserTypeFilter.builder) {
                               _filter.category = null;
                               _filter.listingType = null;
                               _filter.floorCategory = null;
@@ -404,17 +527,23 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       if (showSubcategory) ...[
                         _sectionHeader('SUBCATEGORY'),
                         _chipGroup<PropertyCategory>(
-                          items: [PropertyCategory.residential, PropertyCategory.commercial, PropertyCategory.plot],
-                          selected: _filter.category ?? PropertyCategory.residential,
+                          items: [
+                            PropertyCategory.residential,
+                            PropertyCategory.commercial,
+                            PropertyCategory.plot,
+                          ],
+                          selected:
+                              _filter.category ?? PropertyCategory.residential,
                           label: (c) => c.value,
                           onTap: (val) {
                             setState(() {
-                              _filter.category = val ?? PropertyCategory.residential;
+                              _filter.category =
+                                  val ?? PropertyCategory.residential;
                               if (_filter.category == PropertyCategory.plot) {
-                                 _filter.flatType = null;
-                                 _filter.society = null;
-                                 _filter.floorCategory = null;
-                                 _societyCtrl.clear();
+                                _filter.flatType = null;
+                                _filter.society = null;
+                                _filter.floorCategory = null;
+                                _societyCtrl.clear();
                               }
                             });
                           },
@@ -427,23 +556,99 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           items: [ListingType.resale, ListingType.rent],
                           selected: _filter.listingType,
                           label: (t) => t.value,
-                          onTap: (val) => setState(() => _filter.listingType = val),
+                          onTap: (val) =>
+                              setState(() => _filter.listingType = val),
                         ),
                       ],
 
+                      // 6. BHK Config
+                      if (showBhk && bhkOptions.isNotEmpty) ...[
+                        _sectionHeader('BHK / CONFIGURATION'),
+                        _chipGroup<String>(
+                          items: bhkOptions,
+                          selected: _filter.flatType,
+                          label: (t) => t,
+                          onTap: (val) =>
+                              setState(() => _filter.flatType = val),
+                        ),
+                      ],
+
+                      // 7. Floor
+                      if (showFloor) ...[
+                        _sectionHeader('FLOOR'),
+                        _chipGroup<FloorCategory>(
+                          items: FloorCategory.values,
+                          selected: _filter.floorCategory,
+                          label: (f) => f.value,
+                          onTap: (val) =>
+                              setState(() => _filter.floorCategory = val),
+                        ),
+                      ],
+
+                      // 8. Furnishing Status
+                      if (showFloor) ...[
+                        _sectionHeader('FURNISHING STATUS'),
+                        _chipGroup<String>(
+                          items: const ['Full', 'Semi', 'Unfurnished'],
+                          selected: _filter.furnishingStatus,
+                          label: (f) => f,
+                          onTap: (val) =>
+                              setState(() => _filter.furnishingStatus = val),
+                        ),
+                      ],
+
+                      // 9. Price Range
+                      _sectionHeader('PRICE RANGE'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _textField(
+                              _minPriceCtrl,
+                              'Min price',
+                              isNumber: true,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              '—',
+                              style: GoogleFonts.inter(
+                                color: AppColors.iosSecondaryLabel,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _textField(
+                              _maxPriceCtrl,
+                              'Max price',
+                              isNumber: true,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // 10. Specific Brokers (moved to bottom)
                       if (isBroker) ...[
                         _sectionHeader('SPECIFIC BROKERS'),
                         GestureDetector(
                           onTap: _showBrokerSelectionDialog,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.iosCardBg,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.person_search_rounded, size: 18, color: AppColors.iosSystemBlue),
+                                Icon(
+                                  Icons.person_search_rounded,
+                                  size: 18,
+                                  color: AppColors.iosSystemBlue,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -452,63 +657,29 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                         : 'Select Brokers',
                                     style: GoogleFonts.inter(
                                       fontSize: 14,
-                                      fontWeight: (_filter.brokerIds?.isNotEmpty ?? false) ? FontWeight.w600 : FontWeight.w500,
-                                      color: (_filter.brokerIds?.isNotEmpty ?? false) ? AppColors.iosSystemBlue : AppColors.charcoal,
+                                      fontWeight:
+                                          (_filter.brokerIds?.isNotEmpty ??
+                                              false)
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      color:
+                                          (_filter.brokerIds?.isNotEmpty ??
+                                              false)
+                                          ? AppColors.iosSystemBlue
+                                          : AppColors.charcoal,
                                     ),
                                   ),
                                 ),
-                                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.iosTertiaryLabel),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 14,
+                                  color: AppColors.iosTertiaryLabel,
+                                ),
                               ],
                             ),
                           ),
                         ),
                       ],
-
-                      // 7. BHK Config
-                      if (showBhk && bhkOptions.isNotEmpty) ...[
-                        _sectionHeader('BHK / CONFIGURATION'),
-                        _chipGroup<String>(
-                          items: bhkOptions,
-                          selected: _filter.flatType,
-                          label: (t) => t,
-                          onTap: (val) => setState(() => _filter.flatType = val),
-                        ),
-                      ],
-
-                      // 8. Floor
-                      if (showFloor) ...[
-                        _sectionHeader('FLOOR'),
-                        _chipGroup<FloorCategory>(
-                          items: FloorCategory.values,
-                          selected: _filter.floorCategory,
-                          label: (f) => f.value,
-                          onTap: (val) => setState(() => _filter.floorCategory = val),
-                        ),
-                      ],
-
-                      // 9. Furnishing Status
-                      if (showFloor) ...[
-                        _sectionHeader('FURNISHING STATUS'),
-                        _chipGroup<String>(
-                          items: const ['Full', 'Semi', 'Unfurnished'],
-                          selected: _filter.furnishingStatus,
-                          label: (f) => f,
-                          onTap: (val) => setState(() => _filter.furnishingStatus = val),
-                        ),
-                      ],
-
-                      // 10. Price Range
-                      _sectionHeader('PRICE RANGE'),
-                      Row(
-                        children: [
-                          Expanded(child: _textField(_minPriceCtrl, 'Min price', isNumber: true)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: Text('—', style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel, fontSize: 16)),
-                          ),
-                          Expanded(child: _textField(_maxPriceCtrl, 'Max price', isNumber: true)),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -519,7 +690,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 decoration: BoxDecoration(
                   color: AppColors.iosGroupedBg,
-                  border: Border(top: BorderSide(color: AppColors.iosSeparator.withValues(alpha: 0.3))),
+                  border: Border(
+                    top: BorderSide(
+                      color: AppColors.iosSeparator.withValues(alpha: 0.3),
+                    ),
+                  ),
                 ),
                 child: SafeArea(
                   top: false,
@@ -527,9 +702,19 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     onTap: _applyFilters,
                     child: Container(
                       height: 50,
-                      decoration: BoxDecoration(color: AppColors.iosSystemBlue, borderRadius: BorderRadius.circular(14)),
+                      decoration: BoxDecoration(
+                        color: AppColors.iosSystemBlue,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       alignment: Alignment.center,
-                      child: Text('Apply Filters', style: GoogleFonts.inter(color: AppColors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                      child: Text(
+                        'Apply',
+                        style: GoogleFonts.inter(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -558,15 +743,31 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           style: GoogleFonts.inter(fontSize: 14, color: AppColors.charcoal),
           decoration: InputDecoration(
             hintText: 'Search area (2+ letters)',
-            hintStyle: GoogleFonts.inter(color: AppColors.iosTertiaryLabel, fontSize: 13),
-            prefixIcon: Icon(Icons.search_rounded, color: AppColors.iosSecondaryLabel, size: 18),
+            hintStyle: GoogleFonts.inter(
+              color: AppColors.iosTertiaryLabel,
+              fontSize: 13,
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: AppColors.iosSecondaryLabel,
+              size: 18,
+            ),
             filled: true,
             fillColor: AppColors.iosCardBg,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppColors.iosSystemBlue, width: 1.5),
+              borderSide: BorderSide(
+                color: AppColors.iosSystemBlue,
+                width: 1.5,
+              ),
             ),
           ),
         );
@@ -587,7 +788,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   final opt = options.elementAt(i);
                   return ListTile(
                     dense: true,
-                    leading: Icon(Icons.location_on_outlined, size: 16, color: AppColors.iosSystemBlue),
+                    leading: Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: AppColors.iosSystemBlue,
+                    ),
                     title: Text(opt, style: GoogleFonts.inter(fontSize: 14)),
                     onTap: () => onSelected(opt),
                   );

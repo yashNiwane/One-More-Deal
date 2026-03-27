@@ -46,6 +46,8 @@ dependencies:
   font_awesome_flutter: ^10.8.0
   connectivity_plus: ^7.0.0
   fl_chart: ^1.2.0
+  data_table_2: ^2.5.18
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
