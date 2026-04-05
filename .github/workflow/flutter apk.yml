@@ -1,5 +1,7 @@
 name: Flutter APK Build (No Signing)
-
+permissions:
+  contents: write
+  packages: write
 on:
   push:
     branches: [ "main" ]
