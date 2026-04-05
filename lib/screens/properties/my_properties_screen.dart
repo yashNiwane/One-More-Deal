@@ -24,8 +24,13 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
 
   List<PropertyModel> get _filteredProperties {
     return _properties.where((p) {
-      if (_selectedCategory != null && p.category != _selectedCategory) return false;
-      if (_selectedListingType != null && p.listingType != _selectedListingType) return false;
+      if (_selectedCategory != null && p.category != _selectedCategory) {
+        return false;
+      }
+      if (_selectedListingType != null &&
+          p.listingType != _selectedListingType) {
+        return false;
+      }
       return true;
     }).toList();
   }
@@ -33,6 +38,15 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
   @override
   void initState() {
     super.initState();
+    final isBuilder =
+        AuthService.userType == 'Builder' ||
+        AuthService.userType == 'Developer';
+    _selectedCategory = isBuilder
+        ? PropertyCategory.newProperty
+        : PropertyCategory.residential;
+    _selectedListingType = isBuilder
+        ? ListingType.newLaunch
+        : ListingType.resale;
     _loadProperties();
   }
 
@@ -165,6 +179,42 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     }
   }
 
+  Widget _buildActiveBadge(PropertyModel p) {
+    final isActive = p.isVisible && !p.isExpired;
+    final Color bg = isActive
+        ? AppColors.iosSystemGreen.withOpacity(0.15)
+        : AppColors.iosDestructive.withOpacity(0.12);
+    final Color fg = isActive ? AppColors.iosSystemGreen : AppColors.iosDestructive;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: fg.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isActive ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            size: 11,
+            color: fg,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isActive ? 'ACTIVE' : 'INACTIVE',
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: fg,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Broker Card Design (same as feed) ──
   Widget _buildBrokerCard(PropertyModel p) {
     const Color cInk = AppColors.charcoal;
@@ -210,9 +260,9 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         : null;
 
     final String? areaStr = p.carpetArea != null
-        ? '${p.carpetArea!.toStringAsFixed(0)} sqft carpet'
+        ? '${p.carpetArea!.toStringAsFixed(0)} sqft'
         : (p.builtUpArea != null
-              ? '${p.builtUpArea!.toStringAsFixed(0)} sqft builtup'
+              ? '${p.builtUpArea!.toStringAsFixed(0)} sqft'
               : (p.areaValue != null
                     ? '${p.areaValue!.toStringAsFixed(0)} ${p.areaUnit}'
                     : null));
@@ -280,13 +330,14 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       for (int i = 0; i < chips.length; i += 2) {
         rows.add(
           Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             children: [
-              chips[i],
-              if (i + 1 < chips.length) ...[
-                const SizedBox(width: 5),
-                chips[i + 1],
-              ],
+              Expanded(child: chips[i]),
+              const SizedBox(width: 5),
+              if (i + 1 < chips.length)
+                Expanded(child: chips[i + 1])
+              else
+                const Expanded(child: SizedBox.shrink()),
             ],
           ),
         );
@@ -327,28 +378,37 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: p.isExpired
-                            ? AppColors.iosDestructive.withValues(alpha: 0.08)
-                            : badgeColor.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Text(
-                        p.isExpired ? 'EXPIRED' : badgeLabel.toUpperCase(),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: p.isExpired
-                              ? AppColors.iosDestructive
-                              : badgeColor,
-                          letterSpacing: 0.2,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: p.isExpired
+                                ? AppColors.iosDestructive.withValues(
+                                    alpha: 0.08,
+                                  )
+                                : badgeColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            p.isExpired ? 'EXPIRED' : badgeLabel.toUpperCase(),
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: p.isExpired
+                                  ? AppColors.iosDestructive
+                                  : badgeColor,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        _buildActiveBadge(p),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -409,7 +469,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                               'Avail: $availStr',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
-                                color: cSub,
+                                color: Colors.black,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -465,7 +525,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                             locStr,
                             style: GoogleFonts.inter(
                               fontSize: 11,
-                              color: cMuted,
+                              color: Colors.black,
                               height: 1.2,
                             ),
                             maxLines: 2,
@@ -492,14 +552,14 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                           Icon(
                             Icons.calendar_today_outlined,
                             size: 10,
-                            color: cMuted,
+                            color: Colors.black,
                           ),
                           const SizedBox(width: 3),
                           Text(
                             dateStr,
                             style: GoogleFonts.inter(
                               fontSize: 11,
-                              color: cMuted,
+                              color: Colors.black,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -823,6 +883,8 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(width: 6),
+                _buildActiveBadge(p),
                 const Spacer(),
                 Text(
                   DateFormat(
@@ -830,7 +892,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   ).format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    color: cMuted,
+                    color: Colors.black,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -888,7 +950,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   infoChip(
                     Icons.event_outlined,
                     'Possession',
-                    DateFormat('MMM yy').format(p.possessionDate!),
+                    DateFormat('MM/yyyy').format(p.possessionDate!),
                   ),
                 if (p.areaValue != null)
                   infoChip(
@@ -1054,26 +1116,47 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
           _buildChip(
             'Residential',
             _selectedCategory == PropertyCategory.residential,
-            () => setState(() => _selectedCategory = _selectedCategory == PropertyCategory.residential ? null : PropertyCategory.residential)
+            () => setState(
+              () => _selectedCategory =
+                  _selectedCategory == PropertyCategory.residential
+                  ? null
+                  : PropertyCategory.residential,
+            ),
           ),
           const SizedBox(width: 8),
           _buildChip(
             'Commercial',
             _selectedCategory == PropertyCategory.commercial,
-            () => setState(() => _selectedCategory = _selectedCategory == PropertyCategory.commercial ? null : PropertyCategory.commercial)
+            () => setState(
+              () => _selectedCategory =
+                  _selectedCategory == PropertyCategory.commercial
+                  ? null
+                  : PropertyCategory.commercial,
+            ),
           ),
           const SizedBox(width: 8),
           _buildChip(
             'Rent',
             _selectedListingType == ListingType.rent,
-            () => setState(() => _selectedListingType = _selectedListingType == ListingType.rent ? null : ListingType.rent)
+            () => setState(
+              () => _selectedListingType =
+                  _selectedListingType == ListingType.rent
+                  ? null
+                  : ListingType.rent,
+            ),
           ),
           const SizedBox(width: 8),
           _buildChip(
             'Resale',
             _selectedListingType == ListingType.resale,
-            () => setState(() => _selectedListingType = _selectedListingType == ListingType.resale ? null : ListingType.resale)
+            () => setState(
+              () => _selectedListingType =
+                  _selectedListingType == ListingType.resale
+                  ? null
+                  : ListingType.resale,
+            ),
           ),
+
         ],
       ),
     );
@@ -1205,7 +1288,10 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -1213,9 +1299,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               ),
               child: Text(
                 'Add First Listing',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -1226,21 +1310,12 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isBuilder =
+        AuthService.userType == 'Builder' ||
+        AuthService.userType == 'Developer';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF3F5F9),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 86, right: 4),
-        child: FloatingActionButton(
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.white,
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          onPressed: _openAddProperty,
-          child: const Icon(Icons.add_rounded, size: 28),
-        ),
-      ),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -1265,13 +1340,16 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                     children: [
                       _buildMinimalStat('${_properties.length} Total'),
                       const SizedBox(width: 8),
-                      _buildMinimalStat('${_properties.length - _expiredCount} Live', live: true),
+                      _buildMinimalStat(
+                        '${_properties.length - _expiredCount} Live',
+                        live: true,
+                      ),
                     ],
                   ),
                 ),
             ],
           ),
-          if (_properties.isNotEmpty)
+          if (_properties.isNotEmpty && !isBuilder)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -1285,20 +1363,21 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
           else if (_properties.isEmpty)
             SliverFillRemaining(child: Center(child: _buildEmptyState()))
           else if (_filteredProperties.isEmpty)
-             SliverFillRemaining(
-               child: Center(
-                 child: Text(
-                   'No listings match the selected filters.',
-                   style: GoogleFonts.inter(color: AppColors.darkGray),
-                 ),
-               ),
-             )
+            SliverFillRemaining(
+              child: Center(
+                child: Text(
+                  'No listings match the selected filters.',
+                  style: GoogleFonts.inter(color: AppColors.darkGray),
+                ),
+              ),
+            )
           else
             SliverPadding(
               padding: const EdgeInsets.only(top: 8),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildPropertyCard(_filteredProperties[index]),
+                  (context, index) =>
+                      _buildPropertyCard(_filteredProperties[index]),
                   childCount: _filteredProperties.length,
                 ),
               ),

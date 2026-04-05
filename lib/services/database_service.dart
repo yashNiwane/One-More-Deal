@@ -29,8 +29,8 @@ class DatabaseService {
     try {
       _conn = await Connection.open(
         Endpoint(
-          host:     'one-more-deal.cnkisqqwmvy2.ap-south-1.rds.amazonaws.com',
-          port:     5432,
+          host: 'one-more-deal.cnkisqqwmvy2.ap-south-1.rds.amazonaws.com',
+          port: 5432,
           database: 'OneMoreDeal',
           username: 'postgres',
           password: 'MmKnDMm#14',
@@ -76,7 +76,7 @@ class DatabaseService {
               current_session_token = @token,
               updated_at    = NOW()
         RETURNING id, phone, name, user_type, city, company_name,
-                  is_active, trial_days, trial_ends_at, last_login_at, created_at, current_session_token, user_code
+                  is_active, trial_days, trial_ends_at, last_login_at, created_at, current_session_token, user_code, rera_no, area, office_address
       '''),
       parameters: {'phone': phone, 'token': sessionToken},
     );
@@ -90,7 +90,7 @@ class DatabaseService {
     required String name,
     required String userType,
     required String city,
-    required String companyName,
+    required String companyName, String? reraNo, String? area, String? officeAddress,
   }) async {
     await (await _db).execute(
       Sql.named('''
@@ -99,7 +99,7 @@ class DatabaseService {
             user_type       = @userType,
             city            = @city,
             company_name    = @companyName,
-            updated_at      = NOW()
+            updated_at      = NOW(), rera_no = @reraNo, area = @area, office_address = @officeAddress
         WHERE phone = @phone
       '''),
       parameters: {
@@ -107,7 +107,7 @@ class DatabaseService {
         'name': name,
         'userType': userType,
         'city': city,
-        'companyName': companyName,
+        'companyName': companyName, 'reraNo': reraNo, 'area': area, 'officeAddress': officeAddress,
       },
     );
   }
@@ -117,7 +117,7 @@ class DatabaseService {
     final res = await (await _db).execute(
       Sql.named('''
         SELECT id, phone, name, user_type, city, company_name,
-               is_active, trial_days, trial_ends_at, last_login_at, created_at, current_session_token, user_code
+               is_active, trial_days, trial_ends_at, last_login_at, created_at, current_session_token, user_code, rera_no, area, office_address
         FROM users WHERE phone = @phone LIMIT 1
       '''),
       parameters: {'phone': phone},
@@ -156,11 +156,15 @@ class DatabaseService {
       WHERE user_type = 'Broker' AND is_active = true
       ORDER BY display_name ASC
     ''');
-    return res.map((r) => {
-      'id': r[0] as int,
-      'name': (r[1] as String?) ?? 'Unknown',
-      'code': r[2] as String?,
-    }).toList();
+    return res
+        .map(
+          (r) => {
+            'id': r[0] as int,
+            'name': (r[1] as String?) ?? 'Unknown',
+            'code': r[2] as String?,
+          },
+        )
+        .toList();
   }
 
   Future<void> _ensureSubscriptionRequestsTable() async {
@@ -216,10 +220,10 @@ class DatabaseService {
                     starts_at, ends_at, is_active, created_at
         '''),
         parameters: {
-          'uid':    userId,
+          'uid': userId,
           'months': planMonths,
           'amount': amountPaid,
-          'ref':    paymentRef,
+          'ref': paymentRef,
         },
       );
       if (res.isEmpty) return null;
@@ -361,14 +365,17 @@ class DatabaseService {
     await _ensureSubscriptionRequestsTable();
     final db = await _db;
     final ownerRes = await db.execute(
-      Sql.named('SELECT user_id, plan_months, amount_paid FROM subscription_requests WHERE id = @id LIMIT 1'),
+      Sql.named(
+        'SELECT user_id, plan_months, amount_paid FROM subscription_requests WHERE id = @id LIMIT 1',
+      ),
       parameters: {'id': requestId},
     );
     if (ownerRes.isEmpty) return;
 
     final userId = ownerRes.first[0] as int;
     final planMonths = ownerRes.first[1] as int;
-    final amountPaid = double.tryParse(ownerRes.first[2]?.toString() ?? '') ?? 0;
+    final amountPaid =
+        double.tryParse(ownerRes.first[2]?.toString() ?? '') ?? 0;
 
     await db.execute(
       Sql.named(
@@ -385,9 +392,7 @@ class DatabaseService {
             updated_at = NOW()
         WHERE id = @id
       '''),
-      parameters: {
-        'id': requestId,
-      },
+      parameters: {'id': requestId},
     );
 
     await createSubscription(
@@ -398,7 +403,9 @@ class DatabaseService {
     );
 
     await db.execute(
-      Sql.named('UPDATE users SET is_active = true, updated_at = NOW() WHERE id = @uid'),
+      Sql.named(
+        'UPDATE users SET is_active = true, updated_at = NOW() WHERE id = @uid',
+      ),
       parameters: {'uid': userId},
     );
   }
@@ -413,10 +420,7 @@ class DatabaseService {
             updated_at = NOW()
         WHERE id = @id
       '''),
-      parameters: {
-        'id': requestId,
-        'reason': reason,
-      },
+      parameters: {'id': requestId, 'reason': reason},
     );
   }
 
@@ -424,7 +428,9 @@ class DatabaseService {
     await _ensureSubscriptionRequestsTable();
     final db = await _db;
     final res = await db.execute(
-      Sql.named('SELECT user_id FROM subscription_requests WHERE id = @id LIMIT 1'),
+      Sql.named(
+        'SELECT user_id FROM subscription_requests WHERE id = @id LIMIT 1',
+      ),
       parameters: {'id': requestId},
     );
     if (res.isEmpty) return;
@@ -442,12 +448,16 @@ class DatabaseService {
     );
 
     await db.execute(
-      Sql.named('UPDATE subscriptions SET is_active = false WHERE user_id = @uid AND is_active = true'),
+      Sql.named(
+        'UPDATE subscriptions SET is_active = false WHERE user_id = @uid AND is_active = true',
+      ),
       parameters: {'uid': userId},
     );
 
     await db.execute(
-      Sql.named('UPDATE users SET is_active = false, updated_at = NOW() WHERE id = @uid'),
+      Sql.named(
+        'UPDATE users SET is_active = false, updated_at = NOW() WHERE id = @uid',
+      ),
       parameters: {'uid': userId},
     );
   }
@@ -478,11 +488,7 @@ class DatabaseService {
         )
         VALUES (@uid, @months, @amount, NULL, 'approved', NOW(), NOW())
       '''),
-      parameters: {
-        'uid': user.id,
-        'months': planMonths,
-        'amount': amountPaid,
-      },
+      parameters: {'uid': user.id, 'months': planMonths, 'amount': amountPaid},
     );
   }
 
@@ -491,22 +497,41 @@ class DatabaseService {
     required String reason,
   }) async {
     await _ensureSubscriptionRequestsTable();
+    
+    debugPrint('[DB] Attempting to block user with phone: $phone');
+    
     final user = await getUserByPhone(phone);
     if (user == null) {
+      debugPrint('[DB] ❌ User not found for phone $phone');
       throw Exception('User not found for phone $phone');
     }
+    
+    debugPrint('[DB] Found user: ID=${user.id}, Name=${user.name}, Type=${user.userType}');
 
     final db = await _db;
-    await db.execute(
-      Sql.named('UPDATE subscriptions SET is_active = false WHERE user_id = @uid AND is_active = true'),
+    
+    // Step 1: Deactivate subscriptions
+    debugPrint('[DB] Step 1: Deactivating subscriptions...');
+    final subRes = await db.execute(
+      Sql.named(
+        'UPDATE subscriptions SET is_active = false WHERE user_id = @uid AND is_active = true RETURNING id',
+      ),
       parameters: {'uid': user.id},
     );
-
+    debugPrint('[DB] Deactivated ${subRes.length} subscription(s)');
+    
+    // Step 2: Deactivate user
+    debugPrint('[DB] Step 2: Deactivating user...');
     await db.execute(
-      Sql.named('UPDATE users SET is_active = false, updated_at = NOW() WHERE id = @uid'),
+      Sql.named(
+        'UPDATE users SET is_active = false, updated_at = NOW() WHERE id = @uid',
+      ),
       parameters: {'uid': user.id},
     );
-
+    debugPrint('[DB] User deactivated');
+    
+    // Step 3: Create revoked subscription request
+    debugPrint('[DB] Step 3: Creating revoked subscription request...');
     await db.execute(
       Sql.named('''
         INSERT INTO subscription_requests (
@@ -515,11 +540,9 @@ class DatabaseService {
         )
         VALUES (@uid, 0, 0, NULL, 'revoked', @reason, NOW(), NOW())
       '''),
-      parameters: {
-        'uid': user.id,
-        'reason': reason,
-      },
+      parameters: {'uid': user.id, 'reason': reason},
     );
+    debugPrint('[DB] ✅ User blocked successfully: ${user.name} (${user.userType})');
   }
 
   /// Retrieves a user's phone number by ID (for contact feature).
@@ -539,10 +562,23 @@ class DatabaseService {
   /// Searches for city areas matching the query string.
   Future<List<String>> searchCityAreas(String query) async {
     final res = await (await _db).execute(
-      Sql.named('SELECT area FROM city_areas WHERE area ILIKE @query ORDER BY area ASC LIMIT 10'),
+      Sql.named(
+        'SELECT area FROM city_areas WHERE area ILIKE @query ORDER BY area ASC LIMIT 10',
+      ),
       parameters: {'query': '%$query%'},
     );
     return res.map((r) => r[0] as String).toList();
+  }
+
+  /// Returns city/locality areas for dropdown selection.
+  Future<List<String>> getCityAreas({int limit = 200}) async {
+    final res = await (await _db).execute(
+      Sql.named(
+        'SELECT DISTINCT area FROM city_areas WHERE area IS NOT NULL AND TRIM(area) <> \'\' ORDER BY area ASC LIMIT @limit',
+      ),
+      parameters: {'limit': limit},
+    );
+    return res.map((r) => (r[0] as String).trim()).toList(growable: false);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -560,11 +596,7 @@ class DatabaseService {
         INSERT INTO enquiries (property_id, enquirer_id, type, created_at)
         VALUES (@pid, @eid, @type, NOW())
       '''),
-      parameters: {
-        'pid': propertyId,
-        'eid': enquirerId,
-        'type': type.value,
-      },
+      parameters: {'pid': propertyId, 'eid': enquirerId, 'type': type.value},
     );
   }
 
@@ -594,43 +626,60 @@ class DatabaseService {
         RETURNING *
       '''),
       parameters: {
-        'userId':         p.userId,
-        'category':       p.category.value,
-        'listingType':    p.listingType.value,
-        'city':           p.city,
-        'area':           p.area,
-        'subarea':        p.subarea,
-        'societyName':    p.societyName,
-        'flatType':       p.flatType,
-        'areaValue':      p.areaValue,
-        'builtUpArea':    p.builtUpArea,
-        'carpetArea':     p.carpetArea,
-        'areaUnit':       p.areaUnit,
-        'floorNumber':    p.floorNumber,
-        'floorCategory':  p.floorCategory?.value,
-        'price':          p.price,
-        'deposit':        p.deposit,
-        'availability':   p.availability,
+        'userId': p.userId,
+        'category': p.category.value,
+        'listingType': p.listingType.value,
+        'city': p.city,
+        'area': p.area,
+        'subarea': p.subarea,
+        'societyName': p.societyName,
+        'flatType': p.flatType,
+        'areaValue': p.areaValue,
+        'builtUpArea': p.builtUpArea,
+        'carpetArea': p.carpetArea,
+        'areaUnit': p.areaUnit,
+        'floorNumber': p.floorNumber,
+        'floorCategory': p.floorCategory?.value,
+        'price': p.price,
+        'deposit': p.deposit,
+        'availability': p.availability,
         'possessionDate': p.possessionDate?.toIso8601String().substring(0, 10),
-        'parking':        p.parking,
+        'parking': p.parking,
         'furnishingStatus': p.furnishingStatus,
-        'reraNo':         p.reraNo,
+        'reraNo': p.reraNo,
         'totalBuildings': p.totalBuildings,
         'amenitiesCount': p.amenitiesCount,
         'buildingStructure': p.buildingStructure,
-        'totalUnits':     p.totalUnits,
-        'isApproved':     p.isApproved,
-        'variants':       p.variants != null ? jsonEncode(p.variants) : null,
-        'deleteDays':     deleteDays,
+        'totalUnits': p.totalUnits,
+        'isApproved': p.isApproved,
+        'variants': p.variants != null ? jsonEncode(p.variants) : null,
+        'deleteDays': deleteDays,
       },
     );
     if (res.isEmpty) return null;
     return PropertyModel.fromMap(res.first.toColumnMap());
   }
 
+  /// Deactivates all currently visible properties for a user.
+  /// Used when builders add a new listing (only one active at a time).
+  Future<void> deactivateVisibleProperties(int userId) async {
+    await (await _db).execute(
+      Sql.named('''
+        UPDATE properties
+        SET is_visible = false
+        WHERE user_id = @uid
+          AND is_visible = true
+          AND (is_deleted = false OR is_deleted IS NULL)
+      '''),
+      parameters: {'uid': userId},
+    );
+  }
+
   /// Updates editable fields of an existing property.
   Future<void> updateProperty(PropertyModel p) async {
-    if (p.id == null) throw ArgumentError('PropertyModel.id must not be null for update');
+    if (p.id == null) {
+      throw ArgumentError('PropertyModel.id must not be null for update');
+    }
     await (await _db).execute(
       Sql.named('''
         UPDATE properties SET
@@ -652,22 +701,22 @@ class DatabaseService {
         WHERE id = @id AND user_id = @userId
       '''),
       parameters: {
-        'id':             p.id,
-        'userId':         p.userId,
-        'area':           p.area,
-        'subarea':        p.subarea,
-        'societyName':    p.societyName,
-        'flatType':       p.flatType,
-        'areaValue':      p.areaValue,
-        'builtUpArea':    p.builtUpArea,
-        'carpetArea':     p.carpetArea,
-        'floorNumber':    p.floorNumber,
-        'floorCategory':  p.floorCategory?.value,
-        'price':          p.price,
-        'deposit':        p.deposit,
-        'availability':   p.availability,
+        'id': p.id,
+        'userId': p.userId,
+        'area': p.area,
+        'subarea': p.subarea,
+        'societyName': p.societyName,
+        'flatType': p.flatType,
+        'areaValue': p.areaValue,
+        'builtUpArea': p.builtUpArea,
+        'carpetArea': p.carpetArea,
+        'floorNumber': p.floorNumber,
+        'floorCategory': p.floorCategory?.value,
+        'price': p.price,
+        'deposit': p.deposit,
+        'availability': p.availability,
         'possessionDate': p.possessionDate?.toIso8601String().substring(0, 10),
-        'parking':        p.parking,
+        'parking': p.parking,
         'furnishingStatus': p.furnishingStatus,
       },
     );
@@ -686,7 +735,11 @@ class DatabaseService {
 
   /// Refreshes a property — resets posted date and auto-delete timer.
   /// Rent → 30 days, all others → 60 days from NOW().
-  Future<void> refreshProperty(int propertyId, int userId, ListingType listingType) async {
+  Future<void> refreshProperty(
+    int propertyId,
+    int userId,
+    ListingType listingType,
+  ) async {
     final deleteDays = listingType == ListingType.rent ? 30 : 60;
     await (await _db).execute(
       Sql.named('''
@@ -743,8 +796,8 @@ class DatabaseService {
         params['city'] = filter.city;
       }
       if (filter.area != null) {
-        conditions.add('LOWER(p.area) LIKE LOWER(@area)');
-        params['area'] = '%${filter.area}%';
+        conditions.add('LOWER(p.area) = LOWER(@area)');
+        params['area'] = filter.area;
       }
       if (filter.society != null) {
         conditions.add('LOWER(p.society_name) LIKE LOWER(@society)');
@@ -776,7 +829,9 @@ class DatabaseService {
       }
       if (filter.userTypeFilter != null) {
         if (filter.userTypeFilter == UserTypeFilter.builder) {
-          conditions.add("(u.user_type = 'Builder' OR u.user_type = 'Developer')");
+          conditions.add(
+            "(u.user_type = 'Builder' OR u.user_type = 'Developer')",
+          );
         } else {
           conditions.add('u.user_type = @userType');
           params['userType'] = filter.userTypeFilter!.value;
@@ -838,8 +893,6 @@ class DatabaseService {
     return res.map((r) => PropertyModel.fromMap(r.toColumnMap())).toList();
   }
 
-
-
   /// Restores visible=true for properties hidden by inactivity (not by expiry).
   Future<void> restoreUserProperties(int userId) async {
     await (await _db).execute(
@@ -858,7 +911,9 @@ class DatabaseService {
   /// Hides all properties of a user (called on 7-day inactivity).
   Future<void> hidePropertiesForUser(int userId) async {
     await (await _db).execute(
-      Sql.named('UPDATE properties SET is_visible = false WHERE user_id = @uid'),
+      Sql.named(
+        'UPDATE properties SET is_visible = false WHERE user_id = @uid',
+      ),
       parameters: {'uid': userId},
     );
   }
@@ -870,21 +925,30 @@ class DatabaseService {
   /// Returns stats for the HomeScreen dashboard.
   Future<Map<String, int>> getUserStats(String phone) async {
     final userRes = await (await _db).execute(
-      Sql.named('SELECT id, trial_ends_at FROM users WHERE phone = @phone LIMIT 1'),
+      Sql.named(
+        'SELECT id, trial_ends_at FROM users WHERE phone = @phone LIMIT 1',
+      ),
       parameters: {'phone': phone},
     );
     if (userRes.isEmpty) {
-      return {'listings': 0, 'enquiries': 0, 'trialDaysLeft': 0, 'dealsClosed': 0};
+      return {
+        'listings': 0,
+        'enquiries': 0,
+        'trialDaysLeft': 0,
+        'dealsClosed': 0,
+      };
     }
 
-    final userId      = userRes.first[0] as int;
+    final userId = userRes.first[0] as int;
     final trialEndsAt = userRes.first[1] as DateTime?;
     final trialDaysLeft = trialEndsAt != null
         ? trialEndsAt.difference(DateTime.now().toUtc()).inDays.clamp(0, 9999)
         : 0;
 
     final listingsRes = await (await _db).execute(
-      Sql.named('SELECT COUNT(*) FROM properties WHERE user_id=@uid AND is_visible=true'),
+      Sql.named(
+        'SELECT COUNT(*) FROM properties WHERE user_id=@uid AND is_visible=true',
+      ),
       parameters: {'uid': userId},
     );
 
@@ -898,10 +962,10 @@ class DatabaseService {
     );
 
     return {
-      'listings':     (listingsRes.first[0] as int?) ?? 0,
-      'enquiries':    (enquiriesRes.first[0] as int?) ?? 0,
+      'listings': (listingsRes.first[0] as int?) ?? 0,
+      'enquiries': (enquiriesRes.first[0] as int?) ?? 0,
       'trialDaysLeft': trialDaysLeft,
-      'dealsClosed':  0,
+      'dealsClosed': 0,
     };
   }
 
@@ -914,13 +978,18 @@ class DatabaseService {
   Future<Map<String, int>> getAdminDashboardStats() async {
     final db = await _db;
 
-    Future<int> count(String sql, {Map<String, dynamic> params = const {}}) async {
+    Future<int> count(
+      String sql, {
+      Map<String, dynamic> params = const {},
+    }) async {
       final res = await db.execute(Sql.named(sql), parameters: params);
       return ((res.isNotEmpty ? res.first[0] : 0) as int?) ?? 0;
     }
 
     final totalUsers = await count('SELECT COUNT(*) FROM users');
-    final activeUsers = await count('SELECT COUNT(*) FROM users WHERE is_active = true');
+    final activeUsers = await count(
+      'SELECT COUNT(*) FROM users WHERE is_active = true',
+    );
 
     final totalProperties = await count('''
       SELECT COUNT(*)
@@ -976,6 +1045,193 @@ class DatabaseService {
     };
   }
 
+  /// Compact admin dashboard metrics used by the redesigned admin panel.
+  Future<Map<String, int>> getAdminCompactOverviewStats({
+    int suspensionDays = 7,
+  }) async {
+    final res = await (await _db).execute(
+      Sql.named('''
+        WITH upcoming AS (
+          SELECT
+            u.id,
+            u.user_type,
+            COALESCE(
+              (
+                SELECT MAX(s.ends_at)
+                FROM subscriptions s
+                WHERE s.user_id = u.id
+                  AND s.is_active = true
+                  AND s.ends_at > NOW()
+              ),
+              u.trial_ends_at
+            ) AS valid_till
+          FROM users u
+          WHERE u.user_type IN ('Broker', 'Builder', 'Developer')
+        ),
+        susp AS (
+          SELECT user_type
+          FROM upcoming
+          WHERE valid_till IS NOT NULL
+            AND valid_till >= NOW()
+            AND valid_till <= NOW() + (@days || ' days')::interval
+        )
+        SELECT
+          (SELECT COUNT(*)::int FROM users WHERE user_type = 'Broker') AS total_brokers,
+          (SELECT COUNT(*)::int FROM users WHERE user_type IN ('Builder', 'Developer')) AS total_builders,
+          (SELECT COUNT(*)::int FROM susp WHERE user_type = 'Broker') AS broker_next7_suspension,
+          (SELECT COUNT(*)::int FROM susp WHERE user_type IN ('Builder', 'Developer')) AS builder_next7_suspension,
+          (
+            SELECT COUNT(*)::int
+            FROM properties p
+            JOIN users u ON u.id = p.user_id
+            WHERE (p.is_deleted = false OR p.is_deleted IS NULL)
+              AND u.user_type = 'Broker'
+          ) AS total_broker_listings,
+          (
+            SELECT COUNT(*)::int
+            FROM properties p
+            JOIN users u ON u.id = p.user_id
+            WHERE (p.is_deleted = false OR p.is_deleted IS NULL)
+              AND u.user_type IN ('Builder', 'Developer')
+          ) AS total_builder_listings,
+          (
+            SELECT COUNT(*)::int
+            FROM subscriptions
+            WHERE created_at >= NOW() - INTERVAL '7 days'
+          ) AS payments_7d,
+          (
+            SELECT COUNT(*)::int
+            FROM subscriptions
+            WHERE created_at >= NOW() - INTERVAL '30 days'
+          ) AS payments_30d
+      '''),
+      parameters: {'days': suspensionDays},
+    );
+
+    if (res.isEmpty) return {};
+    final row = res.first.toColumnMap();
+    return {
+      'totalBrokers': (row['total_brokers'] as int?) ?? 0,
+      'totalBuilders': (row['total_builders'] as int?) ?? 0,
+      'brokerNext7Suspension': (row['broker_next7_suspension'] as int?) ?? 0,
+      'builderNext7Suspension': (row['builder_next7_suspension'] as int?) ?? 0,
+      'totalBrokerListings': (row['total_broker_listings'] as int?) ?? 0,
+      'totalBuilderListings': (row['total_builder_listings'] as int?) ?? 0,
+      'payments7d': (row['payments_7d'] as int?) ?? 0,
+      'payments30d': (row['payments_30d'] as int?) ?? 0,
+    };
+  }
+
+  /// Users whose entitlement/trial validity expires in upcoming [days].
+  Future<List<Map<String, dynamic>>> getAdminUpcomingSuspensions({
+    int days = 7,
+    int limit = 200,
+  }) async {
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT
+          u.id,
+          COALESCE(NULLIF(TRIM(u.company_name), ''), NULLIF(TRIM(u.name), ''), 'Unknown') AS name,
+          u.phone,
+          u.user_type,
+          COALESCE(listings.total, 0) AS current_adds,
+          ent.valid_till,
+          GREATEST(
+            0,
+            CEIL(EXTRACT(EPOCH FROM (ent.valid_till - NOW())) / 86400.0)
+          )::int AS days_left
+        FROM users u
+        JOIN LATERAL (
+          SELECT COALESCE(
+            (
+              SELECT MAX(s.ends_at)
+              FROM subscriptions s
+              WHERE s.user_id = u.id
+                AND s.is_active = true
+                AND s.ends_at > NOW()
+            ),
+            u.trial_ends_at
+          ) AS valid_till
+        ) ent ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::int AS total
+          FROM properties p
+          WHERE p.user_id = u.id
+            AND (p.is_deleted = false OR p.is_deleted IS NULL)
+        ) listings ON true
+        WHERE u.user_type IN ('Broker', 'Builder', 'Developer')
+          AND ent.valid_till IS NOT NULL
+          AND ent.valid_till >= NOW()
+          AND ent.valid_till <= NOW() + (@days || ' days')::interval
+        ORDER BY ent.valid_till ASC, name ASC
+        LIMIT @limit
+      '''),
+      parameters: {'days': days, 'limit': limit},
+    );
+
+    return res
+        .map((r) {
+          final m = r.toColumnMap();
+          return {
+            'id': m['id'],
+            'name': m['name'] ?? 'Unknown',
+            'phone': m['phone'] ?? '',
+            'userType': m['user_type'] ?? '',
+            'currentAdds': (m['current_adds'] as int?) ?? 0,
+            'validTill': m['valid_till'] as DateTime?,
+            'daysLeft': (m['days_left'] as int?) ?? 0,
+          };
+        })
+        .toList(growable: false);
+  }
+
+  /// Payment rows from subscriptions created in the last [days].
+  Future<List<Map<String, dynamic>>> getAdminRecentPayments({
+    int days = 30,
+    int limit = 300,
+  }) async {
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT
+          s.id,
+          COALESCE(NULLIF(TRIM(u.company_name), ''), NULLIF(TRIM(u.name), ''), 'Unknown') AS name,
+          u.phone,
+          s.payment_ref,
+          s.amount_paid,
+          s.created_at AS payment_date,
+          s.starts_at,
+          s.ends_at,
+          GREATEST(
+            0,
+            ROUND(EXTRACT(EPOCH FROM (s.ends_at - s.starts_at)) / 86400.0)
+          )::int AS validity_days
+        FROM subscriptions s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.created_at >= NOW() - (@days || ' days')::interval
+        ORDER BY s.created_at DESC
+        LIMIT @limit
+      '''),
+      parameters: {'days': days, 'limit': limit},
+    );
+
+    return res
+        .map((r) {
+          final m = r.toColumnMap();
+          return {
+            'id': m['id'],
+            'name': m['name'] ?? 'Unknown',
+            'phone': m['phone'] ?? '',
+            'paymentRef': m['payment_ref'] ?? '',
+            'amount': double.tryParse(m['amount_paid']?.toString() ?? '') ?? 0,
+            'paymentDate': m['payment_date'] as DateTime?,
+            'startsAt': m['starts_at'] as DateTime?,
+            'endsAt': m['ends_at'] as DateTime?,
+            'validityDays': (m['validity_days'] as int?) ?? 0,
+          };
+        })
+        .toList(growable: false);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   /// New users per day for the last [days] days.
   /// Returns sparse results (days with zero activity are omitted).
@@ -992,7 +1248,9 @@ class DatabaseService {
       parameters: {'start': start},
     );
 
-    return res.map((r) => (day: (r[0] as DateTime), count: (r[1] as int?) ?? 0)).toList(growable: false);
+    return res
+        .map((r) => (day: (r[0] as DateTime), count: (r[1] as int?) ?? 0))
+        .toList(growable: false);
   }
 
   /// New listings per day (based on `posted_at`) for the last [days] days.
@@ -1012,7 +1270,9 @@ class DatabaseService {
       parameters: {'start': start},
     );
 
-    return res.map((r) => (day: (r[0] as DateTime), count: (r[1] as int?) ?? 0)).toList(growable: false);
+    return res
+        .map((r) => (day: (r[0] as DateTime), count: (r[1] as int?) ?? 0))
+        .toList(growable: false);
   }
 
   /// Total count of listings by `category` (enum text).
@@ -1076,7 +1336,9 @@ class DatabaseService {
   /// Rejects (soft-deletes) a builder property.
   Future<void> rejectProperty(int propertyId) async {
     await (await _db).execute(
-      Sql.named('UPDATE properties SET is_deleted = true, is_visible = false WHERE id = @id'),
+      Sql.named(
+        'UPDATE properties SET is_deleted = true, is_visible = false WHERE id = @id',
+      ),
       parameters: {'id': propertyId},
     );
   }

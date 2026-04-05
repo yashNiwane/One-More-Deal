@@ -59,7 +59,7 @@ class AuthService {
         await _p.setBool(_keyIsLoggedIn, true);
         await _p.setString(_keyUserPhone, phone);
         await _p.setString(_keySessionToken, token);
-        debugPrint('[AUTH] loginUser OK — userId=${user.id}, phone=$phone');
+        debugPrint('[AUTH] loginUser OK — userId=${user.id}, phone=$phone, isActive=${user.isActive}');
       } else {
         throw Exception('Failed to upsert user record in database');
       }
@@ -76,6 +76,9 @@ class AuthService {
     required String userType,
     required String city,
     required String companyName,
+    String? reraNo,
+    String? area,
+    String? officeAddress,
   }) async {
     try {
       await DatabaseService.instance.updateUserProfile(
@@ -84,6 +87,9 @@ class AuthService {
         userType: userType,
         city: city,
         companyName: companyName,
+        reraNo: reraNo,
+        area: area,
+        officeAddress: officeAddress,
       );
       // Re-hydrate dynamically instead of trusting local updates
       _currentUser = await DatabaseService.instance.getUserByPhone(userPhone);
@@ -139,6 +145,9 @@ class AuthService {
   static String get userCompanyName => _currentUser?.companyName ?? '';
   static int? get currentUserId => _currentUser?.id;
   static String? get userCode => _currentUser?.userCode;
+  static String get userReraNo => _currentUser?.reraNo ?? '';
+  static String get userArea => _currentUser?.area ?? '';
+  static String get userOfficeAddress => _currentUser?.officeAddress ?? '';
 
   // ── Session Validation ──────────────────────────────────────────────
 
@@ -147,6 +156,9 @@ class AuthService {
     try {
       final user = await DatabaseService.instance.getUserByPhone(userPhone);
       if (user == null) return false;
+      
+      // Update current user but don't block here - let hasActiveSubscription handle it
+      _currentUser = user;
 
       final localToken = _p.getString(_keySessionToken);
       if (user.currentSessionToken != null &&
@@ -169,10 +181,17 @@ class AuthService {
     try {
       final user = await DatabaseService.instance.getUserByPhone(userPhone);
       if (user == null) return false;
+      
+      // Check if user is blocked
+      if (!user.isActive) {
+        debugPrint('[AUTH] User is blocked - no active subscription: $userPhone');
+        return false;
+      }
+      
       _currentUser = user; // keep in sync
 
       if (user.isTrial) {
-        debugPrint('[AUTH] hasActiveSubscription -> isTrial true (days left: \${user.trialDaysLeft})');
+        debugPrint('[AUTH] hasActiveSubscription -> isTrial true (days left: ${user.trialDaysLeft})');
         return true;
       }
 
@@ -184,7 +203,7 @@ class AuthService {
 
       debugPrint('[AUTH] hasActiveSubscription -> NO active sub & NO trial');
       if (user.isActive) {
-        debugPrint('[AUTH] Auto-deactivating expired user: \${user.phone}');
+        debugPrint('[AUTH] Auto-deactivating expired user: ${user.phone}');
         await DatabaseService.instance.deactivateUser(user.phone);
       }
       

@@ -12,6 +12,7 @@ import 'properties/add_property_screen.dart';
 import 'properties/my_properties_screen.dart';
 import 'properties/properties_feed_screen.dart';
 import 'profile_screen.dart';
+import 'contact_us_screen.dart';
 import 'properties/filter_bottom_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -146,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       const MyPropertiesScreen(),
       const ProfileScreen(),
+      const ContactUsScreen(),
     ];
 
     return Scaffold(
@@ -157,134 +159,70 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildFrostedBottomNav() {
-    return SafeArea(
-      bottom: true,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.topCenter,
-          children: [
-            ClipPath(
-              clipper: _DropNotchDockClipper(),
-              child: Container(
-                height: 90,
-                margin: const EdgeInsets.only(top: 10),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFFFFFFFF), Color(0xFFF6F8FC)],
-                  ),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.10),
-                      blurRadius: 22,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 20, 14, 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildNavItem(0, Icons.home_filled, 'Home'),
-                      ),
-                      Expanded(
-                        child: _buildNavItem(
-                          1,
-                          Icons.search_rounded,
-                          'Search',
-                          onTap: _openSearchFiltersFromNav,
-                          selectedOverride: _currentIndex == 1,
-                        ),
-                      ),
-                      const SizedBox(width: 84),
-                      Expanded(
-                        child: _buildNavItem(
-                          2,
-                          Icons.grid_view_rounded,
-                          'Listings',
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildNavItem(
-                          3,
-                          Icons.person_outline_rounded,
-                          'You',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(top: 6, child: _buildAddPropertyNavButton()),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border(
+          top: BorderSide(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(0, Icons.home_filled, 'Home'),
+              _buildNavItem(2, Icons.list_alt_rounded, 'My List'),
+              _buildAddPropertyNavAction(),
+              _buildNavItem(3, Icons.person_outline_rounded, 'Profile'),
+              _buildNavItem(4, Icons.support_agent_rounded, 'Contact Us'),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAddPropertyNavButton() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.94, end: 1),
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutBack,
-      builder: (context, scale, child) {
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: GestureDetector(
-        onTap: _openAddProperty,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutCubic,
-          width: 60,
-          height: 60,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.white,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.10),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primaryLight, AppColors.primary],
-              ),
-              border: Border.all(
-                color: AppColors.white.withValues(alpha: 0.16),
-                width: 1,
-              ),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
+  Widget _buildAddPropertyNavAction() {
+    return GestureDetector(
+      onTap: _openAddProperty,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 70,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primaryLight, AppColors.primary],
                 ),
-                const Icon(Icons.add_rounded, color: AppColors.white, size: 25),
-              ],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.add_rounded, color: AppColors.white, size: 24),
             ),
-          ),
+            const SizedBox(height: 4),
+            Text(
+              'Add Property',
+              maxLines: 1,
+              overflow: TextOverflow.visible,
+              softWrap: false,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -314,143 +252,45 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     VoidCallback? onTap,
     bool? selectedOverride,
   }) {
-    final isSelected = selectedOverride ?? (_currentIndex == index);
+    // If we are currently on the Discover page (index 1), visually highlight the Home tab (0)
+    final isSelected = selectedOverride ?? (_currentIndex == index || (index == 0 && _currentIndex == 1));
     return GestureDetector(
-      onTap: onTap ?? () => setState(() => _currentIndex = index),
+      onTap: onTap ?? () {
+        setState(() {
+          if (index == 0 && _currentIndex == 1) {
+            _currentIndex = 0;
+          } else {
+            _currentIndex = index;
+          }
+        });
+      },
       behavior: HitTestBehavior.opaque,
-      child: AnimatedSlide(
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-        offset: Offset(0, isSelected ? -0.045 : 0),
-        child: SizedBox(
-          height: 60,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedScale(
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOutBack,
-                scale: isSelected ? 1 : 0.94,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                  width: 40,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primary.withValues(alpha: 0.10)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeOutCubic,
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: ScaleTransition(scale: animation, child: child),
-                      );
-                    },
-                    child: Icon(
-                      icon,
-                      key: ValueKey('${label}_$isSelected'),
-                      size: isSelected ? 19 : 18,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.mediumGray,
-                    ),
-                  ),
-                ),
+      child: SizedBox(
+        width: 70,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 26,
+              color: isSelected ? AppColors.primary : AppColors.mediumGray,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.visible,
+              softWrap: false,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.primary : AppColors.mediumGray,
               ),
-              const SizedBox(height: 6),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOutCubic,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  height: 1,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.darkGray,
-                  letterSpacing: -0.1,
-                ),
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(height: 2),
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                opacity: isSelected ? 1 : 0,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  width: isSelected ? 18 : 10,
-                  height: 2.5,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
-
-class _DropNotchDockClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    const corner = 28.0;
-    const notchHalfWidth = 42.0;
-    const notchDepth = 31.0;
-    final centerX = size.width / 2;
-
-    final path = Path()
-      ..moveTo(corner, 0)
-      ..quadraticBezierTo(0, 0, 0, corner)
-      ..lineTo(0, size.height - corner)
-      ..quadraticBezierTo(0, size.height, corner, size.height)
-      ..lineTo(size.width - corner, size.height)
-      ..quadraticBezierTo(
-        size.width,
-        size.height,
-        size.width,
-        size.height - corner,
-      )
-      ..lineTo(size.width, corner)
-      ..quadraticBezierTo(size.width, 0, size.width - corner, 0)
-      ..lineTo(centerX + notchHalfWidth, 0)
-      ..cubicTo(
-        centerX + 30,
-        0,
-        centerX + 22,
-        notchDepth * 0.52,
-        centerX + 14,
-        notchDepth,
-      )
-      ..quadraticBezierTo(centerX, notchDepth + 4, centerX - 14, notchDepth)
-      ..cubicTo(
-        centerX - 22,
-        notchDepth * 0.52,
-        centerX - 30,
-        0,
-        centerX - notchHalfWidth,
-        0,
-      )
-      ..lineTo(corner, 0)
-      ..close();
-
-    return path;
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

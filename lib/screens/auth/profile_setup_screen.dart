@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
-import '../../core/app_constants.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
 import '../home_screen.dart';
@@ -21,14 +20,35 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _nameController = TextEditingController();
   final _cityController = TextEditingController();
   final _companyController = TextEditingController();
+  final _reraController = TextEditingController();
+  final _areaController = TextEditingController();
+  final _officeAddressController = TextEditingController();
   String _userType = 'Broker';
   bool _isSaving = false;
+  static final RegExp _englishAsciiRegex = RegExp(r'^[\x00-\x7F]+$');
+
+  String? _validateEnglish(
+    String? value, {
+    required String fieldName,
+    bool requiredField = true,
+  }) {
+    final text = value?.trim() ?? '';
+    if (requiredField && text.isEmpty) return 'Please enter $fieldName';
+    if (text.isEmpty) return null;
+    if (!_englishAsciiRegex.hasMatch(text)) {
+      return 'Only English characters are allowed';
+    }
+    return null;
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _cityController.dispose();
     _companyController.dispose();
+    _reraController.dispose();
+    _areaController.dispose();
+    _officeAddressController.dispose();
     super.dispose();
   }
 
@@ -41,6 +61,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       userType: _userType,
       city: _cityController.text.trim(),
       companyName: _companyController.text.trim(),
+      reraNo: _userType == 'Broker' ? _reraController.text.trim() : null,
+      area: _areaController.text.trim(),
+      officeAddress: _officeAddressController.text.trim(),
     );
 
     if (!mounted) return;
@@ -58,9 +81,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     // Use direct push but still check subscription to prevent bypass
     final hasSub = await AuthService.hasActiveSubscription();
     if (!mounted) return;
-    
+
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => hasSub ? const HomeScreen() : const SubscriptionScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            hasSub ? const HomeScreen() : const SubscriptionScreen(),
+      ),
       (_) => false,
     );
   }
@@ -125,7 +151,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.accent.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(20),
@@ -175,7 +203,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.3)),
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: const Icon(
                             Icons.arrow_back_ios_new_rounded,
@@ -215,6 +244,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       child: TextFormField(
                         controller: _nameController,
                         textCapitalization: TextCapitalization.words,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[\x00-\x7F]'),
+                          ),
+                        ],
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -228,10 +262,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           ),
                         ),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Please enter your full name';
-                          }
-                          if (v.trim().length < 2) return 'Name too short';
+                          final englishError = _validateEnglish(
+                            v,
+                            fieldName: 'your full name',
+                          );
+                          if (englishError != null) return englishError;
+                          if ((v?.trim().length ?? 0) < 2)
+                            return 'Name too short';
                           return null;
                         },
                       ),
@@ -281,6 +318,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       child: TextFormField(
                         controller: _cityController,
                         textCapitalization: TextCapitalization.words,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[\x00-\x7F]'),
+                          ),
+                        ],
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -293,12 +335,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             color: AppColors.primaryLight,
                           ),
                         ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Please enter your city';
-                          }
-                          return null;
-                        },
+                        validator: (v) =>
+                            _validateEnglish(v, fieldName: 'your city'),
                       ),
                     ),
 
@@ -315,6 +353,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       child: TextFormField(
                         controller: _companyController,
                         textCapitalization: TextCapitalization.words,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[\x00-\x7F]'),
+                          ),
+                        ],
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -326,6 +369,116 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             Icons.business_rounded,
                             color: AppColors.primaryLight,
                           ),
+                        ),
+                        validator: (v) => _validateEnglish(
+                          v,
+                          fieldName: 'your company or firm name',
+                          requiredField: false,
+                        ),
+                      ),
+                    ),
+
+                    if (_userType == 'Broker') ...[
+                      const SizedBox(height: 24),
+                      FadeInUp(
+                        duration: const Duration(milliseconds: 650),
+                        child: const _Label('RERA Number'),
+                      ),
+                      const SizedBox(height: 8),
+                      FadeInUp(
+                        duration: const Duration(milliseconds: 700),
+                        child: TextFormField(
+                          controller: _reraController,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[\x00-\x7F]'),
+                            ),
+                          ],
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.charcoal,
+                          ),
+                          decoration: const InputDecoration(
+                            hintText: 'Enter your RERA No.',
+                            prefixIcon: Icon(
+                              Icons.verified_rounded,
+                              color: AppColors.primaryLight,
+                            ),
+                          ),
+                          validator: (v) => _validateEnglish(
+                            v,
+                            fieldName: 'your RERA Number',
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 700),
+                      child: const _Label('Area'),
+                    ),
+                    const SizedBox(height: 8),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 750),
+                      child: TextFormField(
+                        controller: _areaController,
+                        textCapitalization: TextCapitalization.words,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[\x00-\x7F]'),
+                          ),
+                        ],
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.charcoal,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. Shivaji Nagar',
+                          prefixIcon: Icon(
+                            Icons.map_rounded,
+                            color: AppColors.primaryLight,
+                          ),
+                        ),
+                        validator: (v) =>
+                            _validateEnglish(v, fieldName: 'your area'),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 750),
+                      child: const _Label('Office Address'),
+                    ),
+                    const SizedBox(height: 8),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 800),
+                      child: TextFormField(
+                        controller: _officeAddressController,
+                        textCapitalization: TextCapitalization.sentences,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[\x00-\x7F]'),
+                          ),
+                        ],
+                        maxLines: 2,
+                        minLines: 1,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.charcoal,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: 'Full office address',
+                          prefixIcon: Icon(
+                            Icons.location_on_rounded,
+                            color: AppColors.primaryLight,
+                          ),
+                        ),
+                        validator: (v) => _validateEnglish(
+                          v,
+                          fieldName: 'your office address',
                         ),
                       ),
                     ),
@@ -339,11 +492,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.3),
+                          ),
                         ),
                         child: Text(
                           'Login DB Error:\n${AuthService.tempLoginError}',
-                          style: const TextStyle(color: Colors.red, fontSize: 13),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
 
@@ -456,9 +614,7 @@ class _UserTypeCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Icon(
-                isSelected
-                    ? Icons.check_circle_rounded
-                    : Icons.circle_outlined,
+                isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
                 color: isSelected ? AppColors.accent : AppColors.lightGray,
                 size: 18,
               ),

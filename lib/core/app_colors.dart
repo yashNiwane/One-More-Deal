@@ -55,7 +55,7 @@ class AppColors {
   static const Color iosSeparator = Color(0xFFC6C6C8);     // iOS thin separator
   static const Color iosSecondaryLabel = Color(0xFF8E8E93); // iOS secondary text
   static const Color iosTertiaryLabel = Color(0xFFAEAEB2);  // iOS tertiary text
-  static const Color iosSystemBlue = Color(0xFF007AFF);     // iOS tappable blue
+  static const Color iosSystemBlue = Color(0xFF022B5F);     // iOS tappable blue (primary)
   static const Color iosDestructive = Color(0xFFFF3B30);    // iOS destructive red
   static const Color iosSystemGreen = Color(0xFF34C759);    // iOS green
   static const Color iosFill = Color(0xFFE5E5EA);           // iOS fill color

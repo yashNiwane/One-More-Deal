@@ -29,11 +29,19 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   final TextEditingController _minPriceCtrl = TextEditingController();
   final TextEditingController _maxPriceCtrl = TextEditingController();
 
+  bool _isPropertyCategoryExpanded = false;
+  bool _isSubcategoryExpanded = false;
+  bool _isListingTypeExpanded = false;
+  bool _isAdvancedFiltersExpanded = false;
+
   @override
   void initState() {
     super.initState();
+    final baseCity = (widget.currentFilter.city?.trim().isNotEmpty ?? false)
+        ? widget.currentFilter.city!.trim()
+        : 'Pune';
     _filter = PropertyFilter(
-      city: 'Pune',
+      city: baseCity,
       area: widget.currentFilter.area,
       society: widget.currentFilter.society,
       category: widget.currentFilter.category,
@@ -79,7 +87,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   }
 
   void _applyFilters() {
-    _filter.city = 'Pune';
+    _filter.city = (_filter.city?.trim().isNotEmpty ?? false)
+        ? _filter.city!.trim()
+        : 'Pune';
     _filter.area = _areaCtrl.text.trim().isEmpty ? null : _areaCtrl.text.trim();
     _filter.society = _societyCtrl.text.trim().isEmpty
         ? null
@@ -92,7 +102,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
 
   void _clearFilters() {
     setState(() {
-      _filter = PropertyFilter(city: 'Pune');
+      _filter = PropertyFilter(
+        city: (widget.currentFilter.city?.trim().isNotEmpty ?? false)
+            ? widget.currentFilter.city!.trim()
+            : 'Pune',
+      );
       _areaCtrl.clear();
       _societyCtrl.clear();
       _minPriceCtrl.clear();
@@ -101,19 +115,29 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   }
 
   void _showBrokerSelectionDialog() {
+    // Fill search field with existing IDs
+    if (_filter.brokerIds != null && _filter.brokerIds!.isNotEmpty) {
+      final codes = _filter.brokerIds!.map((id) {
+        final b = _allBrokers.cast<Map<String, dynamic>?>().firstWhere(
+          (b) => b?['id'] == id,
+          orElse: () => null,
+        );
+        return ((b?['code'] as String?)?.isNotEmpty == true) 
+            ? b!['code'] as String 
+            : id.toString();
+      }).toList();
+      _brokerSearchQuery = codes.join(' ');
+    } else {
+      _brokerSearchQuery = '';
+    }
+
+    final TextEditingController textCtrl = TextEditingController(text: _brokerSearchQuery);
+
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final filteredBrokers = _allBrokers.where((b) {
-              if (_brokerSearchQuery.isEmpty) return true;
-              final name = ((b['name'] as String?) ?? '').toLowerCase();
-              final code = ((b['code'] as String?) ?? '').toLowerCase();
-              final q = _brokerSearchQuery.toLowerCase();
-              return name.contains(q) || code.contains(q);
-            }).toList();
-
             return Dialog(
               backgroundColor: AppColors.white,
               shape: RoundedRectangleBorder(
@@ -121,12 +145,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
               child: Container(
                 padding: const EdgeInsets.all(16),
-                height: MediaQuery.of(context).size.height * 0.6,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Select Brokers',
+                      'Search Brokers',
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -135,11 +159,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     ),
                     const SizedBox(height: 12),
                     TextField(
+                      controller: textCtrl,
                       onChanged: (val) {
-                        setDialogState(() => _brokerSearchQuery = val);
+                        _brokerSearchQuery = val;
                       },
                       decoration: InputDecoration(
-                        hintText: 'Search broker name or code...',
+                        hintText: 'Enter IDs e.g. BA1 BA2 BA20...',
                         prefixIcon: const Icon(Icons.search, size: 20),
                         contentPadding: const EdgeInsets.symmetric(vertical: 0),
                         border: OutlineInputBorder(
@@ -148,58 +173,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Expanded(
-                      child: _isLoadingBrokers
-                          ? const Center(child: CircularProgressIndicator())
-                          : _allBrokers.isEmpty
-                          ? const Center(child: Text('No brokers found.'))
-                          : ListView.builder(
-                              itemCount: filteredBrokers.length,
-                              itemBuilder: (context, index) {
-                                final broker = filteredBrokers[index];
-                                final id = broker['id'] as int;
-                                final name = broker['name'] as String;
-                                final code = broker['code'] as String?;
-                                final isSelected =
-                                    _filter.brokerIds?.contains(id) ?? false;
-
-                                return CheckboxListTile(
-                                  title: Text(
-                                    name,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  subtitle: code != null
-                                      ? Text(
-                                          code,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            color: AppColors.iosTertiaryLabel,
-                                          ),
-                                        )
-                                      : null,
-                                  value: isSelected,
-                                  dense: true,
-                                  controlAffinity:
-                                      ListTileControlAffinity.leading,
-                                  onChanged: (checked) {
-                                    setDialogState(() {
-                                      _filter.brokerIds ??= [];
-                                      if (checked == true) {
-                                        _filter.brokerIds!.add(id);
-                                      } else {
-                                        _filter.brokerIds!.remove(id);
-                                      }
-                                    });
-                                    setState(() {});
-                                  },
-                                );
-                              },
-                            ),
+                    Text(
+                      'You can enter multiple broker codes separated by space or comma.',
+                      style: GoogleFonts.inter(fontSize: 12, color: AppColors.iosSecondaryLabel),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -211,8 +189,41 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         onPressed: () {
+                          final query = _brokerSearchQuery.trim().toLowerCase();
+                          if (query.isNotEmpty) {
+                            // Split by space or comma
+                            final parts = query.split(RegExp(r'[\s,]+'));
+                            
+                            List<int> foundIds = [];
+                            for (var part in parts) {
+                              if (part.isEmpty) continue;
+                              final normalizedPart = part.replaceAll('-', '');
+                              
+                              final exactMatch = _allBrokers.where((b) {
+                                final name = ((b['name'] as String?) ?? '').toLowerCase();
+                                final code = ((b['code'] as String?) ?? '').toLowerCase();
+                                final normalizedCode = code.replaceAll('-', '');
+                                return name == part || normalizedCode == normalizedPart;
+                              }).toList();
+                              
+                              if (exactMatch.isNotEmpty) {
+                                foundIds.addAll(exactMatch.map((m) => m['id'] as int));
+                              } else {
+                                final parsedId = int.tryParse(part);
+                                if (parsedId != null) {
+                                  foundIds.add(parsedId);
+                                }
+                              }
+                            }
+                            
+                            _filter.brokerIds = foundIds.isNotEmpty ? foundIds.toSet().toList() : null;
+                          } else {
+                            _filter.brokerIds = null;
+                          }
+                          
                           _brokerSearchQuery = '';
                           Navigator.pop(context);
+                          setState(() {}); // refresh the bottom sheet text
                         },
                         child: Text(
                           'Done',
@@ -249,6 +260,68 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           letterSpacing: 0.6,
         ),
       ),
+    );
+  }
+
+  Widget _buildCollapsibleSection({
+    required String title,
+    String? currentValue,
+    required bool isExpanded,
+    required VoidCallback onToggle,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: onToggle,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: title == 'ADVANCED FILTERS' ? AppColors.iosSystemBlue : AppColors.iosSecondaryLabel,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                Row(
+                  children: [
+                    if (currentValue != null && currentValue.isNotEmpty) ...[
+                      Text(
+                        currentValue,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.iosSystemBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Icon(
+                      isExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: title == 'ADVANCED FILTERS' ? AppColors.iosSystemBlue : AppColors.iosSecondaryLabel,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isExpanded)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: child,
+          ),
+      ],
     );
   }
 
@@ -353,7 +426,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         'Co-working Spaces',
       ];
     } else if (isResi) {
-      bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'];
+      bhkOptions = ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Bungalow'];
     } else if (isComm) {
       bhkOptions = [
         'Office Spaces',
@@ -370,6 +443,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     bool showSociety = !isPlot;
     bool showBhk = !isPlot && !isBuilder;
     bool showFloor = !isPlot && !isBuilder;
+    bool showFurnishing = _filter.listingType == ListingType.rent;
     bool showListingType = isBroker;
     bool showSubcategory = isBroker;
 
@@ -447,46 +521,80 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. City (fixed)
-                      _sectionHeader('CITY'),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.iosCardBg,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
+
+
+                      // Advanced Filters (Collapsible Category, Subcategory, Listing Type) - MOVED TO TOP
+                      _buildCollapsibleSection(
+                        title: 'ADVANCED FILTERS',
+                        currentValue: null,
+                        isExpanded: _isAdvancedFiltersExpanded,
+                        onToggle: () => setState(() => _isAdvancedFiltersExpanded = !_isAdvancedFiltersExpanded),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.location_city_rounded,
-                              size: 16,
-                              color: AppColors.iosSecondaryLabel,
+                            _sectionHeader('PROPERTY CATEGORY'),
+                            _chipGroup<UserTypeFilter>(
+                              items: UserTypeFilter.values,
+                              selected: _filter.userTypeFilter ?? UserTypeFilter.broker,
+                              label: (u) => u == UserTypeFilter.builder ? '🏗 Builder' : '🤝 Broker',
+                              activeColor: (_filter.userTypeFilter ?? UserTypeFilter.broker) == UserTypeFilter.builder
+                                  ? const Color(0xFFE69A1A)
+                                  : AppColors.iosSystemBlue,
+                              onTap: (val) {
+                                setState(() {
+                                  _filter.userTypeFilter = val ?? UserTypeFilter.broker;
+                                  if (_filter.userTypeFilter == UserTypeFilter.builder) {
+                                    _filter.category = null;
+                                    _filter.listingType = null;
+                                    _filter.floorCategory = null;
+                                    _filter.brokerIds = null;
+                                  }
+                                });
+                              },
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Pune',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.charcoal,
+                            
+                            if (showSubcategory) ...[
+                              _sectionHeader('SUBCATEGORY'),
+                              _chipGroup<PropertyCategory>(
+                                items: [
+                                  PropertyCategory.residential,
+                                  PropertyCategory.commercial,
+                                  PropertyCategory.plot,
+                                ],
+                                selected: _filter.category ?? PropertyCategory.residential,
+                                label: (c) => c.value,
+                                onTap: (val) {
+                                  setState(() {
+                                    _filter.category = val ?? PropertyCategory.residential;
+                                    if (_filter.category == PropertyCategory.plot) {
+                                      _filter.flatType = null;
+                                      _filter.society = null;
+                                      _filter.floorCategory = null;
+                                      _societyCtrl.clear();
+                                    }
+                                  });
+                                },
                               ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.lock_outline_rounded,
-                              size: 14,
-                              color: AppColors.iosTertiaryLabel,
-                            ),
+                            ],
+
+                            if (showListingType) ...[
+                              _sectionHeader('LISTING TYPE'),
+                              _chipGroup<ListingType>(
+                                items: [ListingType.resale, ListingType.rent],
+                                selected: _filter.listingType,
+                                label: (t) => t.value,
+                                onTap: (val) {
+                                  setState(() {
+                                    _filter.listingType = val;
+                                  });
+                                },
+                              ),
+                            ],
                           ],
                         ),
                       ),
 
-                      // 2. Area
-                      _sectionHeader('AREA / LOCALITY'),
-                      _buildAreaAutocomplete(),
+                      const SizedBox(height: 4),
 
                       // 3. Society / Building
                       if (showSociety) ...[
@@ -494,72 +602,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         _textField(_societyCtrl, 'e.g. Amanora, Marvel Brisa…'),
                       ],
 
-                      // 4. Property Category — Builder / Broker
-                      _sectionHeader('PROPERTY CATEGORY'),
-                      _chipGroup<UserTypeFilter>(
-                        items: UserTypeFilter.values,
-                        selected:
-                            _filter.userTypeFilter ?? UserTypeFilter.broker,
-                        label: (u) => u == UserTypeFilter.builder
-                            ? '🏗 Builder'
-                            : '🤝 Broker',
-                        activeColor:
-                            (_filter.userTypeFilter ?? UserTypeFilter.broker) ==
-                                UserTypeFilter.builder
-                            ? const Color(0xFFE69A1A)
-                            : AppColors.iosSystemBlue,
-                        onTap: (val) {
-                          setState(() {
-                            _filter.userTypeFilter =
-                                val ?? UserTypeFilter.broker;
-                            if (_filter.userTypeFilter ==
-                                UserTypeFilter.builder) {
-                              _filter.category = null;
-                              _filter.listingType = null;
-                              _filter.floorCategory = null;
-                              _filter.brokerIds = null;
-                            }
-                          });
-                        },
-                      ),
 
-                      // 5. Subcategory — Residential / Commercial / Plot
-                      if (showSubcategory) ...[
-                        _sectionHeader('SUBCATEGORY'),
-                        _chipGroup<PropertyCategory>(
-                          items: [
-                            PropertyCategory.residential,
-                            PropertyCategory.commercial,
-                            PropertyCategory.plot,
-                          ],
-                          selected:
-                              _filter.category ?? PropertyCategory.residential,
-                          label: (c) => c.value,
-                          onTap: (val) {
-                            setState(() {
-                              _filter.category =
-                                  val ?? PropertyCategory.residential;
-                              if (_filter.category == PropertyCategory.plot) {
-                                _filter.flatType = null;
-                                _filter.society = null;
-                                _filter.floorCategory = null;
-                                _societyCtrl.clear();
-                              }
-                            });
-                          },
-                        ),
-                      ],
-
-                      if (showListingType) ...[
-                        _sectionHeader('LISTING TYPE'),
-                        _chipGroup<ListingType>(
-                          items: [ListingType.resale, ListingType.rent],
-                          selected: _filter.listingType,
-                          label: (t) => t.value,
-                          onTap: (val) =>
-                              setState(() => _filter.listingType = val),
-                        ),
-                      ],
 
                       // 6. BHK Config
                       if (showBhk && bhkOptions.isNotEmpty) ...[
@@ -586,47 +629,18 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       ],
 
                       // 8. Furnishing Status
-                      if (showFloor) ...[
+                      if (showFurnishing) ...[
                         _sectionHeader('FURNISHING STATUS'),
                         _chipGroup<String>(
                           items: const ['Full', 'Semi', 'Unfurnished'],
                           selected: _filter.furnishingStatus,
-                          label: (f) => f,
+                          label: (t) => t,
                           onTap: (val) =>
                               setState(() => _filter.furnishingStatus = val),
                         ),
                       ],
 
-                      // 9. Price Range
-                      _sectionHeader('PRICE RANGE'),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _textField(
-                              _minPriceCtrl,
-                              'Min price',
-                              isNumber: true,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: Text(
-                              '—',
-                              style: GoogleFonts.inter(
-                                color: AppColors.iosSecondaryLabel,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _textField(
-                              _maxPriceCtrl,
-                              'Max price',
-                              isNumber: true,
-                            ),
-                          ),
-                        ],
-                      ),
+
 
                       // 10. Specific Brokers (moved to bottom)
                       if (isBroker) ...[
@@ -680,6 +694,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           ),
                         ),
                       ],
+
+
+
+
                     ],
                   ),
                 ),

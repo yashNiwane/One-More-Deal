@@ -78,8 +78,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
 
   Future<void> _verify() async {
     final otp = _otpController.text.trim();
-    if (otp.length < 6) {
-      setState(() => _errorText = 'Please enter the complete 6-digit OTP');
+    if (otp.length < 4) {
+      setState(() => _errorText = 'Please enter the complete 4-digit OTP');
       _shakeController.forward(from: 0);
       HapticFeedback.vibrate();
       return;
@@ -102,15 +102,24 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
         await AuthService.loginUser(widget.phone);
 
         if (!mounted) return;
+        
+        // Check if user is blocked - if so, navigate to subscription screen
+        final user = await DatabaseService.instance.getUserByPhone(widget.phone);
+        if (user != null && !user.isActive) {
+          debugPrint('[OTP] User is blocked - navigating to subscription screen');
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+            (_) => false,
+          );
+          return;
+        }
+        
         // Navigate to profile setup if no profile, else home
         bool isProfileDone = AuthService.isProfileComplete;
 
         // Fallback check: Fetch from Database to ensure no local cache failure
         if (!isProfileDone) {
           try {
-            final user = await DatabaseService.instance.getUserByPhone(
-              widget.phone,
-            );
             if (user != null &&
                 user.name != null &&
                 user.name!.trim().isNotEmpty) {
@@ -133,6 +142,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
         }
       } catch (e) {
         if (!mounted) return;
+        
         setState(() {
           _errorText = 'Network Error. Check your connection and try again.';
           _isVerifying = false;
@@ -346,7 +356,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
                     child: Pinput(
                       controller: _otpController,
                       focusNode: _pinFocus,
-                      length: 6,
+                      length: 4,
                       defaultPinTheme: defaultPinTheme,
                       focusedPinTheme: focusedPinTheme,
                       submittedPinTheme: filledPinTheme,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_colors.dart';
@@ -18,9 +19,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _cityCtrl;
   late TextEditingController _companyCtrl;
+  late TextEditingController _reraCtrl;
+  late TextEditingController _areaCtrl;
+  late TextEditingController _officeCtrl;
   late String _userType;
   bool _isEditing = false;
   bool _isSaving = false;
+  static final RegExp _englishAsciiRegex = RegExp(r'^[\x00-\x7F]+$');
+
+  String? _validateEnglish(
+    String? value, {
+    required String label,
+    bool isOptional = false,
+  }) {
+    final text = value?.trim() ?? '';
+    if (!isOptional && text.isEmpty) return '$label is required';
+    if (text.isEmpty) return null;
+    if (!_englishAsciiRegex.hasMatch(text)) {
+      return 'Only English characters are allowed';
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -28,6 +47,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameCtrl = TextEditingController(text: AuthService.userName);
     _cityCtrl = TextEditingController(text: AuthService.userCity);
     _companyCtrl = TextEditingController(text: AuthService.userCompanyName);
+    _reraCtrl = TextEditingController(text: AuthService.userReraNo);
+    _areaCtrl = TextEditingController(text: AuthService.userArea);
+    _officeCtrl = TextEditingController(text: AuthService.userOfficeAddress);
     _userType = AuthService.userType;
   }
 
@@ -36,6 +58,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameCtrl.dispose();
     _cityCtrl.dispose();
     _companyCtrl.dispose();
+    _reraCtrl.dispose();
+    _areaCtrl.dispose();
+    _officeCtrl.dispose();
     super.dispose();
   }
 
@@ -48,6 +73,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         userType: _userType,
         city: _cityCtrl.text.trim(),
         companyName: _companyCtrl.text.trim(),
+        reraNo: _userType == 'Broker' ? _reraCtrl.text.trim() : null,
+        area: _areaCtrl.text.trim(),
+        officeAddress: _officeCtrl.text.trim(),
       );
       if (mounted) {
         setState(() => _isEditing = false);
@@ -277,7 +305,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           AuthService.userName.isNotEmpty
                               ? AuthService.userName
                               : 'User',
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 24,
@@ -358,6 +386,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icons.apartment_outlined,
             'Company',
             AuthService.userCompanyName,
+            isLast: false,
+          ),
+          if (AuthService.userType == 'Broker')
+            _buildListRow(
+              Icons.verified_outlined,
+              'RERA',
+              AuthService.userReraNo,
+            ),
+          _buildListRow(Icons.map_outlined, 'Area', AuthService.userArea),
+          _buildListRow(
+            Icons.location_on_outlined,
+            'Office',
+            AuthService.userOfficeAddress,
             isLast: true,
           ),
         ]),
@@ -480,7 +521,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: AppColors.iosSeparator.withValues(alpha: 0.3),
                   margin: const EdgeInsets.only(left: 16),
                 ),
-                _buildFormField('Company / Agency', _companyCtrl, isLast: true),
+                _buildFormField(
+                  'Company / Agency',
+                  _companyCtrl,
+                  isLast: false,
+                ),
+                if (_userType == 'Broker') ...[
+                  Container(
+                    height: 0.5,
+                    color: AppColors.iosSeparator.withValues(alpha: 0.3),
+                    margin: const EdgeInsets.only(left: 16),
+                  ),
+                  _buildFormField('RERA No', _reraCtrl, isOptional: true),
+                ],
+                Container(
+                  height: 0.5,
+                  color: AppColors.iosSeparator.withValues(alpha: 0.3),
+                  margin: const EdgeInsets.only(left: 16),
+                ),
+                _buildFormField('Area', _areaCtrl),
+                Container(
+                  height: 0.5,
+                  color: AppColors.iosSeparator.withValues(alpha: 0.3),
+                  margin: const EdgeInsets.only(left: 16),
+                ),
+                _buildFormField('Office Address', _officeCtrl, isLast: true),
               ],
             ),
           ),
@@ -493,6 +558,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _nameCtrl.text = AuthService.userName;
                     _cityCtrl.text = AuthService.userCity;
                     _companyCtrl.text = AuthService.userCompanyName;
+                    _reraCtrl.text = AuthService.userReraNo;
+                    _areaCtrl.text = AuthService.userArea;
+                    _officeCtrl.text = AuthService.userOfficeAddress;
                     _userType = AuthService.userType;
                     setState(() => _isEditing = false);
                   },
@@ -643,7 +711,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   value.isNotEmpty ? value : '-',
                   textAlign: TextAlign.right,
-                  maxLines: 1,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 15,
@@ -755,11 +823,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String label,
     TextEditingController ctrl, {
     bool isLast = false,
+    bool isOptional = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: TextFormField(
         controller: ctrl,
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[\x00-\x7F]')),
+        ],
         style: GoogleFonts.inter(
           fontSize: 15,
           color: AppColors.charcoal,
@@ -778,8 +850,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           contentPadding: const EdgeInsets.symmetric(vertical: 8),
         ),
         validator: (val) {
-          if (val == null || val.trim().isEmpty) return '$label is required';
-          return null;
+          return _validateEnglish(val, label: label, isOptional: isOptional);
         },
       ),
     );

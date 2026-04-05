@@ -167,8 +167,6 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 120),
         children: [
-          _buildTopSummary(),
-          const SizedBox(height: 16),
           if (_pendingProperties.isEmpty)
             _buildEmptyState()
           else
@@ -183,69 +181,6 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
     );
   }
 
-  Widget _buildTopSummary() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1A2B5F), Color(0xFF223B79), Color(0xFFF59E0B)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.18),
-            blurRadius: 26,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.white.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.fact_check_rounded,
-              color: AppColors.white,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Approval Queue',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.white,
-                    letterSpacing: -0.7,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${_pendingProperties.length} builder listings waiting for a decision.',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    height: 1.45,
-                    color: AppColors.white.withValues(alpha: 0.78),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildEmptyState() {
     return Container(
@@ -426,7 +361,7 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
                     if (prop.possessionDate != null)
                       _detailChip(
                         Icons.calendar_today_outlined,
-                        'Possession ${DateFormat('dd MMM yyyy').format(prop.possessionDate!)}',
+                        'Possession ${DateFormat('MM/yyyy').format(prop.possessionDate!)}',
                       ),
                     if (prop.areaValue != null)
                       _detailChip(
@@ -619,18 +554,11 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       flex: 2,
-                      child: ElevatedButton(
-                        onPressed: isActing ? null : () => _approve(prop),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(52),
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Ink(
+                      child: GestureDetector(
+                        onTap: isActing ? null : () => _approve(prop),
+                        child: Container(
+                          height: 52,
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             gradient: const LinearGradient(
@@ -647,37 +575,34 @@ class _AdminApprovalsScreenState extends State<AdminApprovalsScreen> {
                               ),
                             ],
                           ),
-                          child: Container(
-                            alignment: Alignment.center,
-                            child: isActing
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.white,
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.check_rounded,
-                                        color: AppColors.white,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Approve Listing',
-                                        style: GoogleFonts.inter(
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
+                          child: isActing
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.white,
                                   ),
-                          ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.check_rounded,
+                                      color: AppColors.white,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Approve Listing',
+                                      style: GoogleFonts.inter(
+                                        color: AppColors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                     ),

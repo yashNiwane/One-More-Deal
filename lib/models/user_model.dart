@@ -13,6 +13,9 @@ class UserModel {
   final DateTime createdAt;
   final String? currentSessionToken;
   final String? userCode;
+  final String? reraNo;
+  final String? area;
+  final String? officeAddress;
 
   const UserModel({
     required this.id,
@@ -28,6 +31,9 @@ class UserModel {
     required this.createdAt,
     this.currentSessionToken,
     this.userCode,
+    this.reraNo,
+    this.area,
+    this.officeAddress,
   });
 
   /// Days left in free trial (0 if expired).
@@ -54,6 +60,9 @@ class UserModel {
         createdAt:    (m['created_at'] as DateTime?) ?? DateTime.now(),
         currentSessionToken: m['current_session_token'] as String?,
         userCode:     m['user_code'] as String?,
+        reraNo:       m['rera_no'] as String?,
+        area:         m['area'] as String?,
+        officeAddress:m['office_address'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -70,6 +79,9 @@ class UserModel {
         'created_at':    createdAt.toIso8601String(),
         'current_session_token': currentSessionToken,
         'user_code':     userCode,
+        'rera_no':       reraNo,
+        'area':          area,
+        'office_address':officeAddress,
       };
 }
 

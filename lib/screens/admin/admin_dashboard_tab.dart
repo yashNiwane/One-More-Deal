@@ -1,6 +1,3 @@
-import 'dart:math' as math;
-
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -16,15 +13,39 @@ class AdminDashboardTab extends StatefulWidget {
 }
 
 class _AdminDashboardTabState extends State<AdminDashboardTab> {
-  static const int _days = 14;
-
   bool _loading = true;
   String? _error;
 
-  Map<String, int>? _stats;
-  List<DailyCount> _newUsers = const [];
-  List<DailyCount> _newListings = const [];
-  Map<String, int> _categoryBreakdown = const {};
+  Map<String, int> _overview = const {};
+  List<Map<String, dynamic>> _suspensions7d = const [];
+  List<Map<String, dynamic>> _suspensions30d = const [];
+  List<Map<String, dynamic>> _payments7d = const [];
+  List<Map<String, dynamic>> _payments30d = const [];
+
+  String _suspension7Query = '';
+  String _suspension30Query = '';
+  String _payment7Query = '';
+  String _payment30Query = '';
+
+  int _suspension7Page = 0;
+  int _suspension30Page = 0;
+  int _payment7Page = 0;
+  int _payment30Page = 0;
+
+  int _suspension7RowsPerPage = 5;
+  int _suspension30RowsPerPage = 5;
+  int _payment7RowsPerPage = 5;
+  int _payment30RowsPerPage = 5;
+
+  int? _suspension7SortColumnIndex;
+  bool _suspension7SortAscending = true;
+  int? _suspension30SortColumnIndex;
+  bool _suspension30SortAscending = true;
+  int? _payment7SortColumnIndex;
+  bool _payment7SortAscending = true;
+  int? _payment30SortColumnIndex;
+  bool _payment30SortAscending = true;
+
   @override
   void initState() {
     super.initState();
@@ -39,351 +60,225 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
     try {
       final results = await Future.wait([
-        DatabaseService.instance.getAdminDashboardStats(),
-        DatabaseService.instance.getAdminNewUsersByDay(days: _days),
-        DatabaseService.instance.getAdminNewListingsByDay(days: _days),
-        DatabaseService.instance.getAdminPropertyCategoryBreakdown(),
+        DatabaseService.instance.getAdminCompactOverviewStats(
+          suspensionDays: 7,
+        ),
+        DatabaseService.instance.getAdminUpcomingSuspensions(days: 7),
+        DatabaseService.instance.getAdminUpcomingSuspensions(days: 30),
+        DatabaseService.instance.getAdminRecentPayments(days: 7),
+        DatabaseService.instance.getAdminRecentPayments(days: 30),
       ]);
 
       if (!mounted) return;
       setState(() {
-        _stats = results[0] as Map<String, int>;
-        _newUsers = results[1] as List<DailyCount>;
-        _newListings = results[2] as List<DailyCount>;
-        _categoryBreakdown = results[3] as Map<String, int>;
+        _overview = results[0] as Map<String, int>;
+        _suspensions7d = results[1] as List<Map<String, dynamic>>;
+        _suspensions30d = results[2] as List<Map<String, dynamic>>;
+        _payments7d = results[3] as List<Map<String, dynamic>>;
+        _payments30d = results[4] as List<Map<String, dynamic>>;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final stats = _stats ?? const <String, int>{};
-    final pending = stats['pendingApprovals'] ?? 0;
-    final totalListings = stats['totalProperties'] ?? 0;
-    final activeUsers = stats['activeUsers'] ?? 0;
-
     return RefreshIndicator(
       onRefresh: _load,
       color: AppColors.accent,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 120),
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 120),
         children: [
-          _buildHeroSummary(
-            pendingApprovals: pending,
-            totalListings: totalListings,
-            activeUsers: activeUsers,
-          ),
-          const SizedBox(height: 12),
-          if (_error != null) _buildError(_error!),
+          _buildHeader(),
+          const SizedBox(height: 10),
+          _buildOverviewGrid(),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            _buildError(_error!),
+          ],
           if (_loading) ...[
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
             const Center(child: CircularProgressIndicator.adaptive()),
           ] else ...[
-            _buildStatGrid(stats),
-            // _buildPieChartCard(),
+            const SizedBox(height: 10),
+            _buildSuspensionTable(
+              title: 'Next 7 Days Suspension',
+              rows: _suspensions7d,
+              is7Days: true,
+            ),
+            const SizedBox(height: 10),
+            _buildSuspensionTable(
+              title: 'Next 30 Days Suspension',
+              rows: _suspensions30d,
+              is7Days: false,
+            ),
+            const SizedBox(height: 10),
+            _buildPaymentTable(
+              title: '7 Days Payment Details',
+              rows: _payments7d,
+            ),
+            const SizedBox(height: 10),
+            _buildPaymentTable(
+              title: '30 Days Payment Details',
+              rows: _payments30d,
+            ),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildHeroSummary({
-    required int pendingApprovals,
-    required int totalListings,
-    required int activeUsers,
-  }) {
+  Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, Color(0xFF213A78), Color(0xFF345FC7)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.22),
-            blurRadius: 28,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Platform Pulse',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.white,
-                        letterSpacing: -0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'A quick executive snapshot for the last $_days days.',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: AppColors.white.withValues(alpha: 0.74),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: _loading ? null : _load,
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.white.withValues(alpha: 0.12),
-                  foregroundColor: AppColors.white,
-                ),
-                icon: const Icon(Icons.refresh_rounded),
-                tooltip: 'Refresh',
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _heroMetric(
-                  label: 'Pending',
-                  value: pendingApprovals,
-                  icon: Icons.pending_actions_rounded,
-                  tint: AppColors.accentLight,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _heroMetric(
-                  label: 'Listings',
-                  value: totalListings,
-                  icon: Icons.home_work_rounded,
-                  tint: const Color(0xFF93C5FD),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _heroMetric(
-                  label: 'Active users',
-                  value: activeUsers,
-                  icon: Icons.groups_rounded,
-                  tint: const Color(0xFF86EFAC),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _heroMetric({
-    required String label,
-    required int value,
-    required IconData icon,
-    required Color tint,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: tint, size: 18),
-          const SizedBox(height: 18),
-          Text(
-            NumberFormat.compact().format(value),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.white,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.white.withValues(alpha: 0.72),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildError(String message) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.18)),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.error),
-          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              message,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.error,
+              'One More Deal - Admin Dashboard',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: AppColors.charcoal,
               ),
             ),
+          ),
+          IconButton(
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+              foregroundColor: AppColors.primary,
+              minimumSize: const Size(34, 34),
+              padding: EdgeInsets.zero,
+            ),
+            tooltip: 'Refresh',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatGrid(Map<String, int> stats) {
-    final items = <_StatTileData>[
-      _StatTileData(
-        icon: Icons.people_alt_rounded,
-        label: 'Total users',
-        value: stats['totalUsers'] ?? 0,
-        tint: const Color(0xFF2563EB),
+  Widget _buildOverviewGrid() {
+    final cards = <_OverviewCardData>[
+      _OverviewCardData(
+        title: 'Total Brokers',
+        value: _overview['totalBrokers'] ?? 0,
+        color: const Color(0xFF2A64D6),
       ),
-      _StatTileData(
-        icon: Icons.verified_user_rounded,
-        label: 'Active users',
-        value: stats['activeUsers'] ?? 0,
-        tint: const Color(0xFF16A34A),
+      _OverviewCardData(
+        title: 'Next 7 Days Suspension (Broker)',
+        value: _overview['brokerNext7Suspension'] ?? 0,
+        color: const Color(0xFFD97706),
       ),
-      _StatTileData(
-        icon: Icons.home_work_rounded,
-        label: 'Total listings',
-        value: stats['totalProperties'] ?? 0,
-        tint: const Color(0xFF7C3AED),
+      _OverviewCardData(
+        title: 'Total Builders',
+        value: _overview['totalBuilders'] ?? 0,
+        color: const Color(0xFF1F8F63),
       ),
-      _StatTileData(
-        icon: Icons.visibility_rounded,
-        label: 'Visible listings',
-        value: stats['visibleProperties'] ?? 0,
-        tint: const Color(0xFF0891B2),
+      _OverviewCardData(
+        title: 'Next 7 Days Suspension (Builder)',
+        value: _overview['builderNext7Suspension'] ?? 0,
+        color: const Color(0xFFB45309),
       ),
-      _StatTileData(
-        icon: Icons.pending_actions_rounded,
-        label: 'Pending approvals',
-        value: stats['pendingApprovals'] ?? 0,
-        tint: const Color(0xFFD97706),
+      _OverviewCardData(
+        title: 'Total Broker Listings',
+        value: _overview['totalBrokerListings'] ?? 0,
+        color: const Color(0xFF2D4A9B),
       ),
-      _StatTileData(
-        icon: Icons.apartment_rounded,
-        label: 'Builder projects',
-        value: stats['builderProjects'] ?? 0,
-        tint: const Color(0xFFEA580C),
+      _OverviewCardData(
+        title: 'Total Builder Listings',
+        value: _overview['totalBuilderListings'] ?? 0,
+        color: const Color(0xFF2563EB),
       ),
-      _StatTileData(
-        icon: Icons.workspace_premium_rounded,
-        label: 'Active subs',
-        value: stats['activeSubscriptions'] ?? 0,
-        tint: AppColors.accent,
+      _OverviewCardData(
+        title: '7 Days Payment Details',
+        value: _overview['payments7d'] ?? 0,
+        color: const Color(0xFFB38A00),
       ),
-      _StatTileData(
-        icon: Icons.payments_rounded,
-        label: 'Pending payments',
-        value: stats['pendingSubscriptionRequests'] ?? 0,
-        tint: const Color(0xFFDC2626),
+      _OverviewCardData(
+        title: '30 Days Payment Details',
+        value: _overview['payments30d'] ?? 0,
+        color: const Color(0xFF8A6A00),
       ),
     ];
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      itemCount: cards.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.85,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 2.35,
       ),
-      itemCount: items.length,
       itemBuilder: (context, index) {
-        final item = items[index];
+        final item = cards[index];
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: AppColors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.05),
-                blurRadius: 22,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: item.color.withValues(alpha: 0.30)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: item.tint.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(item.icon, color: item.tint, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      NumberFormat.compact().format(item.value),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.charcoal,
-                        letterSpacing: -0.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                item.label,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.darkGray,
+              Container(
+                width: 4,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: item.color,
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: true,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.charcoal,
+                          height: 1.15,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text(
+                        NumberFormat.decimalPattern('en_IN').format(item.value),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: item.color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -392,375 +287,846 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     );
   }
 
-  Widget _buildLineChartCard() {
-    final users = _normalizedSeries(days: _days, raw: _newUsers);
-    final listings = _normalizedSeries(days: _days, raw: _newListings);
+  Widget _buildSuspensionTable({
+    required String title,
+    required List<Map<String, dynamic>> rows,
+    required bool is7Days,
+  }) {
+    final query = is7Days ? _suspension7Query : _suspension30Query;
+    final rowsPerPage = is7Days ? _suspension7RowsPerPage : _suspension30RowsPerPage;
+    final page = is7Days ? _suspension7Page : _suspension30Page;
+    final sortColumnIndex = is7Days ? _suspension7SortColumnIndex : _suspension30SortColumnIndex;
+    final sortAscending = is7Days ? _suspension7SortAscending : _suspension30SortAscending;
 
-    final maxY = math
-        .max(
-          1,
-          math.max(
-            users.map((e) => e.count).fold<int>(0, math.max),
-            listings.map((e) => e.count).fold<int>(0, math.max),
-          ),
-        )
-        .toDouble();
-
-    final userSpots = <FlSpot>[
-      for (int i = 0; i < users.length; i++)
-        FlSpot(i.toDouble(), users[i].count.toDouble()),
-    ];
-    final listingSpots = <FlSpot>[
-      for (int i = 0; i < listings.length; i++)
-        FlSpot(i.toDouble(), listings[i].count.toDouble()),
-    ];
-
-    final startDay = DateTime.now().toLocal().subtract(
-      const Duration(days: _days - 1),
+    final filtered = _filteredSuspensions(rows, query);
+    final sorted = _sortedSuspensions(filtered, sortColumnIndex, sortAscending);
+    final safePage = _safePage(
+      total: sorted.length,
+      page: page,
+      rowsPerPage: rowsPerPage,
     );
-    final dayFmt = DateFormat('d MMM');
+    final paged = _paginateRows(
+      rows: sorted,
+      page: safePage,
+      rowsPerPage: rowsPerPage,
+    );
 
-    return _sectionCard(
-      title: 'Growth Curve',
-      subtitle: 'New users vs new listings',
-      child: SizedBox(
-        height: 240,
-        child: LineChart(
-          LineChartData(
-            minX: 0,
-            maxX: (_days - 1).toDouble(),
-            minY: 0,
-            maxY: maxY + 1,
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: false,
-              horizontalInterval: math.max(1, (maxY / 4).roundToDouble()),
-              getDrawingHorizontalLine: (value) => FlLine(
-                color: AppColors.lightGray.withValues(alpha: 0.65),
-                strokeWidth: 1,
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 28,
-                  interval: math.max(1, (maxY / 4).roundToDouble()),
-                  getTitlesWidget: (value, meta) => Text(
-                    value.toInt().toString(),
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      color: AppColors.mediumGray,
-                    ),
-                  ),
-                ),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 30,
-                  interval: 3,
-                  getTitlesWidget: (value, meta) {
-                    final i = value.toInt();
-                    if (i < 0 || i >= _days) return const SizedBox.shrink();
-                    final d = DateTime(
-                      startDay.year,
-                      startDay.month,
-                      startDay.day,
-                    ).add(Duration(days: i));
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        dayFmt.format(d),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: AppColors.mediumGray,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            lineTouchData: LineTouchData(
-              handleBuiltInTouches: true,
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipColor: (_) =>
-                    AppColors.charcoal.withValues(alpha: 0.92),
-                getTooltipItems: (items) {
-                  return items.map((item) {
-                    final label = item.barIndex == 0 ? 'Users' : 'Listings';
-                    return LineTooltipItem(
-                      '$label: ${item.y.toInt()}',
-                      GoogleFonts.inter(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    );
-                  }).toList();
-                },
-              ),
-            ),
-            lineBarsData: [
-              LineChartBarData(
-                spots: userSpots,
-                isCurved: true,
-                barWidth: 4,
-                color: AppColors.iosSystemBlue,
-                belowBarData: BarAreaData(
-                  show: true,
-                  color: AppColors.iosSystemBlue.withValues(alpha: 0.12),
-                ),
-                dotData: const FlDotData(show: false),
-              ),
-              LineChartBarData(
-                spots: listingSpots,
-                isCurved: true,
-                barWidth: 4,
-                color: AppColors.accent,
-                belowBarData: BarAreaData(
-                  show: true,
-                  color: AppColors.accent.withValues(alpha: 0.12),
-                ),
-                dotData: const FlDotData(show: false),
-              ),
-            ],
-          ),
-        ),
-      ),
-      footer: Row(
+    return _compactSection(
+      title: title,
+      child: Column(
         children: [
-          _legendDot(AppColors.iosSystemBlue),
-          const SizedBox(width: 6),
-          Text(
-            'Users',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkGray,
-            ),
+          _buildSearchAndPagingBar(
+            hint: 'Search suspension rows',
+            query: query,
+            rowsPerPage: rowsPerPage,
+            onQueryChanged: (v) => setState(() {
+              if (is7Days) {
+                _suspension7Query = v;
+                _suspension7Page = 0;
+              } else {
+                _suspension30Query = v;
+                _suspension30Page = 0;
+              }
+            }),
+            onRowsPerPageChanged: (v) => setState(() {
+              if (is7Days) {
+                _suspension7RowsPerPage = v;
+                _suspension7Page = 0;
+              } else {
+                _suspension30RowsPerPage = v;
+                _suspension30Page = 0;
+              }
+            }),
           ),
-          const SizedBox(width: 14),
-          _legendDot(AppColors.accent),
-          const SizedBox(width: 6),
-          Text(
-            'Listings',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkGray,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPieChartCard() {
-    final entries =
-        _categoryBreakdown.entries.where((e) => e.value > 0).toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-
-    final total = entries.fold<int>(0, (p, e) => p + e.value);
-    final colors = <Color>[
-      const Color(0xFF7C3AED),
-      const Color(0xFF0891B2),
-      const Color(0xFFEA580C),
-      const Color(0xFF16A34A),
-      const Color(0xFF64748B),
-    ];
-
-    return _sectionCard(
-      title: 'Category Mix',
-      subtitle: 'Distribution across listing inventory',
-      child: total == 0
-          ? Padding(
-              padding: const EdgeInsets.symmetric(vertical: 28),
-              child: Text(
-                'No data available yet',
-                style: GoogleFonts.inter(color: AppColors.iosSecondaryLabel),
-              ),
-            )
-          : Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 180,
-                    child: PieChart(
-                      PieChartData(
-                        sectionsSpace: 3,
-                        centerSpaceRadius: 50,
-                        sections: [
-                          for (int i = 0; i < entries.length; i++)
-                            PieChartSectionData(
-                              value: entries[i].value.toDouble(),
-                              color: colors[i % colors.length],
-                              radius: 52,
-                              title: '',
-                            ),
-                        ],
-                      ),
-                    ),
+          const SizedBox(height: 8),
+          if (sorted.isEmpty)
+            _emptyHint('No upcoming suspensions in next ${is7Days ? 7 : 30} days.')
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                sortColumnIndex: sortColumnIndex,
+                sortAscending: sortAscending,
+                headingRowHeight: 34,
+                dataRowMinHeight: 32,
+                dataRowMaxHeight: 36,
+                horizontalMargin: 10,
+                columnSpacing: 14,
+                columns: [
+                  const DataColumn(label: Text('No')),
+                  DataColumn(
+                    label: const Text('Type'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _suspension7SortColumnIndex = i;
+                        _suspension7SortAscending = asc;
+                      } else {
+                        _suspension30SortColumnIndex = i;
+                        _suspension30SortAscending = asc;
+                      }
+                    }),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (int i = 0; i < entries.length && i < 6; i++)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            children: [
-                              _legendDot(colors[i % colors.length]),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  entries[i].key,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.charcoal,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${((entries[i].value / total) * 100).round()}%',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.darkGray,
-                                ),
-                              ),
-                            ],
+                  DataColumn(
+                    label: const Text('Name'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _suspension7SortColumnIndex = i;
+                        _suspension7SortAscending = asc;
+                      } else {
+                        _suspension30SortColumnIndex = i;
+                        _suspension30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Number'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _suspension7SortColumnIndex = i;
+                        _suspension7SortAscending = asc;
+                      } else {
+                        _suspension30SortColumnIndex = i;
+                        _suspension30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Current Adds'),
+                    numeric: true,
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _suspension7SortColumnIndex = i;
+                        _suspension7SortAscending = asc;
+                      } else {
+                        _suspension30SortColumnIndex = i;
+                        _suspension30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Valid Till'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _suspension7SortColumnIndex = i;
+                        _suspension7SortAscending = asc;
+                      } else {
+                        _suspension30SortColumnIndex = i;
+                        _suspension30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Days'),
+                    numeric: true,
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _suspension7SortColumnIndex = i;
+                        _suspension7SortAscending = asc;
+                      } else {
+                        _suspension30SortColumnIndex = i;
+                        _suspension30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                ],
+                rows: [
+                  for (int i = 0; i < paged.length; i++)
+                    DataRow(
+                      cells: [
+                        DataCell(
+                          _tableText(
+                            '${(safePage * rowsPerPage) + i + 1}',
                           ),
                         ),
-                    ],
-                  ),
-                ),
-              ],
+                        DataCell(_tableText(_shortType(paged[i]['userType']))),
+                        DataCell(
+                          _tableText(paged[i]['name']?.toString() ?? '-'),
+                        ),
+                        DataCell(
+                          _tableText(paged[i]['phone']?.toString() ?? '-'),
+                        ),
+                        DataCell(
+                          _tableText(
+                            (paged[i]['currentAdds'] ?? 0).toString(),
+                            alignRight: true,
+                          ),
+                        ),
+                        DataCell(
+                          _tableText(
+                            _formatDate(paged[i]['validTill'] as DateTime?),
+                          ),
+                        ),
+                        DataCell(
+                          _tableText(
+                            (paged[i]['daysLeft'] ?? 0).toString(),
+                            alignRight: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
-    );
-  }
-
-  Widget _legendDot(Color c) {
-    return Container(
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(
-        color: c,
-        borderRadius: BorderRadius.circular(999),
+          _buildPager(
+            total: sorted.length,
+            page: safePage,
+            rowsPerPage: rowsPerPage,
+            onPrevious: () => setState(() {
+              if (is7Days) {
+                _suspension7Page--;
+              } else {
+                _suspension30Page--;
+              }
+            }),
+            onNext: () => setState(() {
+              if (is7Days) {
+                _suspension7Page++;
+              } else {
+                _suspension30Page++;
+              }
+            }),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _sectionCard({
+  Widget _buildPaymentTable({
     required String title,
-    required String subtitle,
-    required Widget child,
-    Widget? footer,
+    required List<Map<String, dynamic>> rows,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.05),
-            blurRadius: 22,
-            offset: const Offset(0, 4),
+    final is7Days = title.startsWith('7 ');
+    final query = is7Days ? _payment7Query : _payment30Query;
+    final rowsPerPage = is7Days ? _payment7RowsPerPage : _payment30RowsPerPage;
+    final page = is7Days ? _payment7Page : _payment30Page;
+    final sortColumnIndex = is7Days
+        ? _payment7SortColumnIndex
+        : _payment30SortColumnIndex;
+    final sortAscending = is7Days
+        ? _payment7SortAscending
+        : _payment30SortAscending;
+
+    final filtered = _filteredPayments(rows, query);
+    final sorted = _sortedPayments(filtered, sortColumnIndex, sortAscending);
+    final safePage = _safePage(
+      total: sorted.length,
+      page: page,
+      rowsPerPage: rowsPerPage,
+    );
+    final paged = _paginateRows(
+      rows: sorted,
+      page: safePage,
+      rowsPerPage: rowsPerPage,
+    );
+
+    return _compactSection(
+      title: title,
+      child: Column(
+        children: [
+          _buildSearchAndPagingBar(
+            hint: 'Search payment rows',
+            query: query,
+            rowsPerPage: rowsPerPage,
+            onQueryChanged: (v) => setState(() {
+              if (is7Days) {
+                _payment7Query = v;
+                _payment7Page = 0;
+              } else {
+                _payment30Query = v;
+                _payment30Page = 0;
+              }
+            }),
+            onRowsPerPageChanged: (v) => setState(() {
+              if (is7Days) {
+                _payment7RowsPerPage = v;
+                _payment7Page = 0;
+              } else {
+                _payment30RowsPerPage = v;
+                _payment30Page = 0;
+              }
+            }),
+          ),
+          const SizedBox(height: 8),
+          if (sorted.isEmpty)
+            _emptyHint('No payment records found.')
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                sortColumnIndex: sortColumnIndex,
+                sortAscending: sortAscending,
+                headingRowHeight: 34,
+                dataRowMinHeight: 32,
+                dataRowMaxHeight: 36,
+                horizontalMargin: 10,
+                columnSpacing: 14,
+                columns: [
+                  const DataColumn(label: Text('No')),
+                  DataColumn(
+                    label: const Text('Name'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _payment7SortColumnIndex = i;
+                        _payment7SortAscending = asc;
+                      } else {
+                        _payment30SortColumnIndex = i;
+                        _payment30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Number'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _payment7SortColumnIndex = i;
+                        _payment7SortAscending = asc;
+                      } else {
+                        _payment30SortColumnIndex = i;
+                        _payment30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Transaction No'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _payment7SortColumnIndex = i;
+                        _payment7SortAscending = asc;
+                      } else {
+                        _payment30SortColumnIndex = i;
+                        _payment30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Payment Date'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _payment7SortColumnIndex = i;
+                        _payment7SortAscending = asc;
+                      } else {
+                        _payment30SortColumnIndex = i;
+                        _payment30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Amount'),
+                    numeric: true,
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _payment7SortColumnIndex = i;
+                        _payment7SortAscending = asc;
+                      } else {
+                        _payment30SortColumnIndex = i;
+                        _payment30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Validity Days'),
+                    numeric: true,
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _payment7SortColumnIndex = i;
+                        _payment7SortAscending = asc;
+                      } else {
+                        _payment30SortColumnIndex = i;
+                        _payment30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Validity Till'),
+                    onSort: (i, asc) => setState(() {
+                      if (is7Days) {
+                        _payment7SortColumnIndex = i;
+                        _payment7SortAscending = asc;
+                      } else {
+                        _payment30SortColumnIndex = i;
+                        _payment30SortAscending = asc;
+                      }
+                    }),
+                  ),
+                ],
+                rows: [
+                  for (int i = 0; i < paged.length; i++)
+                    DataRow(
+                      cells: [
+                        DataCell(
+                          _tableText('${(safePage * rowsPerPage) + i + 1}'),
+                        ),
+                        DataCell(
+                          _tableText(paged[i]['name']?.toString() ?? '-'),
+                        ),
+                        DataCell(
+                          _tableText(paged[i]['phone']?.toString() ?? '-'),
+                        ),
+                        DataCell(
+                          _tableText(paged[i]['paymentRef']?.toString() ?? '-'),
+                        ),
+                        DataCell(
+                          _tableText(
+                            _formatDate(paged[i]['paymentDate'] as DateTime?),
+                          ),
+                        ),
+                        DataCell(
+                          _tableText(
+                            _formatAmount(paged[i]['amount']),
+                            alignRight: true,
+                          ),
+                        ),
+                        DataCell(
+                          _tableText(
+                            (paged[i]['validityDays'] ?? 0).toString(),
+                            alignRight: true,
+                          ),
+                        ),
+                        DataCell(
+                          _tableText(
+                            _formatDate(paged[i]['endsAt'] as DateTime?),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          _buildPager(
+            total: sorted.length,
+            page: safePage,
+            rowsPerPage: rowsPerPage,
+            onPrevious: () => setState(() {
+              if (is7Days) {
+                _payment7Page--;
+              } else {
+                _payment30Page--;
+              }
+            }),
+            onNext: () => setState(() {
+              if (is7Days) {
+                _payment7Page++;
+              } else {
+                _payment30Page++;
+              }
+            }),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _compactSection({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.charcoal,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppColors.darkGray,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.charcoal,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           child,
-          if (footer != null) ...[const SizedBox(height: 14), footer],
         ],
       ),
     );
   }
 
-  List<DailyCount> _normalizedSeries({
-    required int days,
-    required List<DailyCount> raw,
-  }) {
-    final now = DateTime.now().toLocal();
-    final start = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: days - 1));
-
-    final byKey = <String, int>{
-      for (final row in raw)
-        '${row.day.year}-${row.day.month}-${row.day.day}': row.count,
-    };
-
-    return [
-      for (int i = 0; i < days; i++)
-        (
-          day: start.add(Duration(days: i)),
-          count:
-              byKey['${start.add(Duration(days: i)).year}-${start.add(Duration(days: i)).month}-${start.add(Duration(days: i)).day}'] ??
-              0,
+  Widget _tableText(String value, {bool alignRight = false}) {
+    return SizedBox(
+      width: alignRight ? 70 : null,
+      child: Text(
+        value,
+        textAlign: alignRight ? TextAlign.right : TextAlign.left,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.charcoal,
         ),
-    ];
+      ),
+    );
+  }
+
+  Widget _buildSearchAndPagingBar({
+    required String hint,
+    required String query,
+    required int rowsPerPage,
+    required ValueChanged<String> onQueryChanged,
+    required ValueChanged<int> onRowsPerPageChanged,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 34,
+            child: TextFormField(
+              initialValue: query,
+              onChanged: onQueryChanged,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: AppColors.iosSecondaryLabel,
+                ),
+                prefixIcon: const Icon(Icons.search_rounded, size: 16),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                filled: true,
+                fillColor: AppColors.offWhite,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
+                  borderSide: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.30),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: AppColors.offWhite,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.12),
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: rowsPerPage,
+              iconSize: 16,
+              borderRadius: BorderRadius.circular(10),
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.charcoal,
+              ),
+              items: const [5, 10, 20, 50]
+                  .map(
+                    (e) => DropdownMenuItem<int>(
+                      value: e,
+                      child: Text('$e / page'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) onRowsPerPageChanged(v);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPager({
+    required int total,
+    required int page,
+    required int rowsPerPage,
+    required VoidCallback onPrevious,
+    required VoidCallback onNext,
+  }) {
+    final pageCount = (total / rowsPerPage).ceil();
+    final maxPage = pageCount == 0 ? 0 : pageCount - 1;
+    final safePage = page.clamp(0, maxPage);
+    final start = total == 0 ? 0 : (safePage * rowsPerPage) + 1;
+    final end = total == 0
+        ? 0
+        : ((safePage * rowsPerPage) + rowsPerPage).clamp(0, total);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Text(
+            '$start-$end of $total',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.darkGray,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: safePage > 0 ? onPrevious : null,
+            icon: const Icon(Icons.chevron_left_rounded),
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Previous page',
+          ),
+          Text(
+            '${safePage + 1}/${pageCount == 0 ? 1 : pageCount}',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.darkGray,
+            ),
+          ),
+          IconButton(
+            onPressed: safePage < maxPage ? onNext : null,
+            icon: const Icon(Icons.chevron_right_rounded),
+            iconSize: 18,
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Next page',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyHint(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.iosSecondaryLabel,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError(String message) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        message,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.error,
+        ),
+      ),
+    );
+  }
+
+  String _shortType(dynamic type) {
+    final value = (type?.toString() ?? '').toLowerCase();
+    if (value == 'broker') return 'Broker';
+    if (value == 'builder' || value == 'developer') return 'Builder';
+    return '-';
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    return DateFormat('dd-MMM').format(date.toLocal());
+  }
+
+  String _formatAmount(dynamic amount) {
+    final val = double.tryParse(amount?.toString() ?? '') ?? 0;
+    if (val % 1 == 0) return val.toInt().toString();
+    return val.toStringAsFixed(2);
+  }
+
+  List<Map<String, dynamic>> _filteredSuspensions(
+    List<Map<String, dynamic>> rows,
+    String query,
+  ) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return List<Map<String, dynamic>>.from(rows);
+    return rows.where((row) {
+      final haystack = [
+        _shortType(row['userType']),
+        row['name']?.toString() ?? '',
+        row['phone']?.toString() ?? '',
+        row['currentAdds']?.toString() ?? '',
+        row['daysLeft']?.toString() ?? '',
+        _formatDate(row['validTill'] as DateTime?),
+      ].join(' ').toLowerCase();
+      return haystack.contains(q);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _sortedSuspensions(
+    List<Map<String, dynamic>> rows,
+    int? sortColumnIndex,
+    bool ascending,
+  ) {
+    final sorted = List<Map<String, dynamic>>.from(rows);
+    final col = sortColumnIndex;
+    if (col == null) return sorted;
+
+    int compare(Map<String, dynamic> a, Map<String, dynamic> b) {
+      switch (col) {
+        case 1:
+          return _shortType(a['userType']).compareTo(_shortType(b['userType']));
+        case 2:
+          return (a['name']?.toString() ?? '').compareTo(
+            b['name']?.toString() ?? '',
+          );
+        case 3:
+          return (a['phone']?.toString() ?? '').compareTo(
+            b['phone']?.toString() ?? '',
+          );
+        case 4:
+          return (a['currentAdds'] ?? 0).compareTo(b['currentAdds'] ?? 0);
+        case 5:
+          return (a['validTill'] as DateTime? ??
+                  DateTime.fromMillisecondsSinceEpoch(0))
+              .compareTo(
+                b['validTill'] as DateTime? ??
+                    DateTime.fromMillisecondsSinceEpoch(0),
+              );
+        case 6:
+          return (a['daysLeft'] ?? 0).compareTo(b['daysLeft'] ?? 0);
+        default:
+          return 0;
+      }
+    }
+
+    sorted.sort(compare);
+    if (!ascending) {
+      return sorted.reversed.toList();
+    }
+    return sorted;
+  }
+
+  List<Map<String, dynamic>> _filteredPayments(
+    List<Map<String, dynamic>> rows,
+    String query,
+  ) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return List<Map<String, dynamic>>.from(rows);
+    return rows.where((row) {
+      final haystack = [
+        row['name']?.toString() ?? '',
+        row['phone']?.toString() ?? '',
+        row['paymentRef']?.toString() ?? '',
+        _formatDate(row['paymentDate'] as DateTime?),
+        _formatDate(row['endsAt'] as DateTime?),
+        _formatAmount(row['amount']),
+        row['validityDays']?.toString() ?? '',
+      ].join(' ').toLowerCase();
+      return haystack.contains(q);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _sortedPayments(
+    List<Map<String, dynamic>> rows,
+    int? sortColumnIndex,
+    bool ascending,
+  ) {
+    final sorted = List<Map<String, dynamic>>.from(rows);
+    if (sortColumnIndex == null) return sorted;
+
+    int compare(Map<String, dynamic> a, Map<String, dynamic> b) {
+      switch (sortColumnIndex) {
+        case 1:
+          return (a['name']?.toString() ?? '').compareTo(
+            b['name']?.toString() ?? '',
+          );
+        case 2:
+          return (a['phone']?.toString() ?? '').compareTo(
+            b['phone']?.toString() ?? '',
+          );
+        case 3:
+          return (a['paymentRef']?.toString() ?? '').compareTo(
+            b['paymentRef']?.toString() ?? '',
+          );
+        case 4:
+          return (a['paymentDate'] as DateTime? ??
+                  DateTime.fromMillisecondsSinceEpoch(0))
+              .compareTo(
+                b['paymentDate'] as DateTime? ??
+                    DateTime.fromMillisecondsSinceEpoch(0),
+              );
+        case 5:
+          return (double.tryParse(a['amount']?.toString() ?? '') ?? 0)
+              .compareTo(double.tryParse(b['amount']?.toString() ?? '') ?? 0);
+        case 6:
+          return (a['validityDays'] ?? 0).compareTo(b['validityDays'] ?? 0);
+        case 7:
+          return (a['endsAt'] as DateTime? ??
+                  DateTime.fromMillisecondsSinceEpoch(0))
+              .compareTo(
+                b['endsAt'] as DateTime? ??
+                    DateTime.fromMillisecondsSinceEpoch(0),
+              );
+        default:
+          return 0;
+      }
+    }
+
+    sorted.sort(compare);
+    if (!ascending) {
+      return sorted.reversed.toList();
+    }
+    return sorted;
+  }
+
+  List<Map<String, dynamic>> _paginateRows({
+    required List<Map<String, dynamic>> rows,
+    required int page,
+    required int rowsPerPage,
+  }) {
+    if (rows.isEmpty) return const [];
+    final maxPage = (rows.length - 1) ~/ rowsPerPage;
+    final safePage = page.clamp(0, maxPage);
+    final start = safePage * rowsPerPage;
+    final end = (start + rowsPerPage).clamp(0, rows.length);
+    return rows.sublist(start, end);
+  }
+
+  int _safePage({
+    required int total,
+    required int page,
+    required int rowsPerPage,
+  }) {
+    if (total == 0) return 0;
+    final maxPage = (total - 1) ~/ rowsPerPage;
+    return page.clamp(0, maxPage);
   }
 }
 
-class _StatTileData {
-  final IconData icon;
-  final String label;
+class _OverviewCardData {
+  final String title;
   final int value;
-  final Color tint;
+  final Color color;
 
-  const _StatTileData({
-    required this.icon,
-    required this.label,
+  const _OverviewCardData({
+    required this.title,
     required this.value,
-    required this.tint,
+    required this.color,
   });
 }

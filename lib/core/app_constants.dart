@@ -32,7 +32,7 @@ class AppStrings {
   static const String mobileHint = '10-digit mobile number';
   static const String sendOTP = 'Send OTP';
   static const String verifyOTP = 'Verify OTP';
-  static const String enterOTP = 'Enter the 6-digit OTP';
+  static const String enterOTP = 'Enter the 4-digit OTP';
   static const String otpSentTo = 'OTP sent to +91 ';
   static const String resendOTP = 'Resend OTP';
   static const String didntReceive = "Didn't receive? ";

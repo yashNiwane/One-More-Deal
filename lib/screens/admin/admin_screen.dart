@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/app_colors.dart';
+import 'admin_approvals_screen.dart';
 import 'admin_dashboard_tab.dart';
 import 'manage_subscription_screen.dart';
 
@@ -11,7 +12,7 @@ class AdminScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         backgroundColor: const Color(0xFF081126),
         body: Container(
@@ -67,6 +68,7 @@ class AdminScreen extends StatelessWidget {
                     tabs: const [
                       Tab(text: 'Dashboard'),
                       Tab(text: 'Manage Subscription'),
+                      Tab(text: 'Approvals'),
                     ],
                   ),
                 ),
@@ -76,6 +78,7 @@ class AdminScreen extends StatelessWidget {
                     children: [
                       AdminDashboardTab(),
                       ManageSubscriptionScreen(),
+                      AdminApprovalsScreen(embedded: true),
                     ],
                   ),
                 ),

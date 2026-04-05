@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/app_theme.dart';
 import 'screens/splash_screen.dart';
+import 'services/otp_service.dart';
 import 'widgets/connectivity_wrapper.dart';
 
 Future<void> main() async {
@@ -15,6 +16,9 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('[ENV] Failed to load .env: $e');
   }
+
+  // Initialize OTP SDK
+  OTPService.initialize();
 
   // Lock orientation to portrait
   await SystemChrome.setPreferredOrientations([

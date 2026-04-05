@@ -46,6 +46,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   void initState() {
     super.initState();
     _loadLatestRequest();
+    _checkIfBlocked();
+  }
+  
+  bool _isBlocked = false;
+  
+  Future<void> _checkIfBlocked() async {
+    final user = await DatabaseService.instance.getUserByPhone(AuthService.userPhone);
+    if (user != null && !user.isActive) {
+      setState(() => _isBlocked = true);
+    }
   }
 
   @override
@@ -192,6 +202,54 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
+                      if (_isBlocked) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          margin: const EdgeInsets.only(bottom: 24),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.error.withValues(alpha: 0.3),
+                              width: 2,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.block_rounded,
+                                color: AppColors.white,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Account Blocked',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Your account has been blocked. Make a payment below to reactivate your account.',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        color: AppColors.white.withValues(alpha: 0.9),
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       Text(
                         'Unlock Full Access',
                         style: GoogleFonts.plusJakartaSans(

@@ -4,14 +4,12 @@ import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
-import '../../services/database_service.dart';
 import '../../services/otp_service.dart';
 import '../../widgets/gradient_button.dart';
 import 'otp_verification_screen.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
-  final bool isLogin;
-  const PhoneAuthScreen({super.key, required this.isLogin});
+  const PhoneAuthScreen({super.key});
 
   @override
   State<PhoneAuthScreen> createState() => _PhoneAuthScreenState();
@@ -47,31 +45,6 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     });
 
     final phone = _phoneController.text.trim();
-
-    try {
-      final user = await DatabaseService.instance.getUserByPhone(phone);
-      final exists = user != null;
-
-      if (widget.isLogin && !exists) {
-        setState(() {
-          _isLoading = false;
-          _errorText = 'Account not found. Please go back and Sign Up.';
-        });
-        HapticFeedback.vibrate();
-        return;
-      }
-      
-      if (!widget.isLogin && exists) {
-        setState(() {
-          _isLoading = false;
-          _errorText = 'Account already exists. Please go back and Sign In.';
-        });
-        HapticFeedback.vibrate();
-        return;
-      }
-    } catch (e) {
-      // If DB check fails, we still allow proceeding (OTP takes over)
-    }
 
     final result = await OTPService.sendOTP(phone);
 
@@ -142,38 +115,31 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.isLogin ? 'Welcome back,' : 'Get started,',
+                          'Welcome,',
                           style: GoogleFonts.plusJakartaSans(
                             color: AppColors.white.withOpacity(0.7),
                             fontSize: 16,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: widget.isLogin ? 'Sign in to\nOne More Deal' : 'Create an\naccount',
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: AppColors.white,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.2,
-                                  letterSpacing: -0.8,
-                                ),
-                              ),
-                              if (widget.isLogin)
-                                TextSpan(
-                                  text: '\nOMD Broker Associate',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: AppColors.accentLight,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                    height: 1.8,
-                                  ),
-                                ),
-                            ],
+                        Text(
+                          'Enter your\nmobile number',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: AppColors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            height: 1.2,
+                            letterSpacing: -0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'OMD Broker Associate',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: AppColors.accentLight,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
@@ -183,6 +149,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
               ],
             ),
           ),
+
 
           // ─── Back button ──────────────────────────────────────────
           SafeArea(
@@ -257,7 +224,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  'We\'ll send you a 6-digit OTP to verify your number.',
+                                  'We\'ll send you a 4-digit OTP to verify your number.',
                                   style: GoogleFonts.plusJakartaSans(
                                     color: AppColors.mediumGray,
                                     fontSize: 14,

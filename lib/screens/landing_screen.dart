@@ -55,10 +55,10 @@ class _LandingScreenState extends State<LandingScreen>
     super.dispose();
   }
 
-  void _goToAuth({required bool isLogin}) {
+  void _goToAuth() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => PhoneAuthScreen(isLogin: isLogin),
+        pageBuilder: (_, animation, __) => const PhoneAuthScreen(),
         transitionDuration: const Duration(milliseconds: 500),
         transitionsBuilder: (_, animation, __, child) {
           return SlideTransition(
@@ -248,32 +248,7 @@ class _LandingScreenState extends State<LandingScreen>
                       children: [
                         _PrimaryButton(
                           label: AppStrings.getStarted,
-                          onTap: () => _goToAuth(isLogin: false),
-                        ),
-                        const SizedBox(height: 14),
-                        GestureDetector(
-                          onTap: () => _goToAuth(isLogin: true),
-                          child: Center(
-                            child: Text.rich(
-                              TextSpan(
-                                text: 'Already have an account? ',
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: AppColors.white.withOpacity(0.7),
-                                  fontSize: 14,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: 'Sign In',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: AppColors.accentLight,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                          onTap: _goToAuth,
                         ),
                         const SizedBox(height: 8),
                       ],

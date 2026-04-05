@@ -13,7 +13,14 @@ class PropertyService {
   /// Posts a new property listing.
   /// Automatically sets auto_delete_at (Rent=30d, Resale/New=60d).
   /// [userId] should come from the logged-in user (AuthService.currentUserId).
-  static Future<PropertyModel?> addProperty(PropertyModel property) async {
+  static Future<PropertyModel?> addProperty(
+    PropertyModel property, {
+    bool deactivatePrevious = false,
+  }) async {
+    final isBuilder = AuthService.userType == 'Builder' || AuthService.userType == 'Developer';
+    if (deactivatePrevious || isBuilder) {
+      await DatabaseService.instance.deactivateVisibleProperties(property.userId);
+    }
     return DatabaseService.instance.addProperty(property);
   }
 
@@ -36,6 +43,11 @@ class PropertyService {
   /// Resets posted_date and auto_delete timer so the listing stays visible.
   /// Rent → 30 days, Resale/New/Plot → 60 days.
   static Future<void> refreshProperty(int propertyId, int userId, ListingType listingType) async {
+    final isBuilder = AuthService.userType == 'Builder' || AuthService.userType == 'Developer';
+    if (isBuilder) {
+      // First deactivate all properties for this builder
+      await DatabaseService.instance.deactivateVisibleProperties(userId);
+    }
     return DatabaseService.instance.refreshProperty(propertyId, userId, listingType);
   }
 
@@ -91,6 +103,11 @@ class PropertyService {
   /// Searches for city areas matching the query string.
   static Future<List<String>> searchCityAreas(String query) async {
     return DatabaseService.instance.searchCityAreas(query);
+  }
+
+  /// Returns area/locality list for dropdown-based filtering.
+  static Future<List<String>> getCityAreas({int limit = 200}) async {
+    return DatabaseService.instance.getCityAreas(limit: limit);
   }
 
   // ── Brokers List ───────────────────────────────────────────────────────

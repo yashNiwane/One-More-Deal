@@ -307,9 +307,10 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
         ? p.societyName!.trim()
         : null;
     final locStr = [
-      p.subarea?.trim().isNotEmpty == true ? p.subarea!.trim() : p.area,
+      if (p.subarea?.trim().isNotEmpty == true) p.subarea!.trim(),
+      if (p.area?.trim().isNotEmpty == true) p.area!.trim(),
       p.city,
-    ].join(', ');
+    ].where((s) => s != null && s.isNotEmpty).join(', ');
 
     final priceStr = p.price != null
         ? _formatPrice(p.price!)
@@ -318,9 +319,9 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
     //     ? 'Deposit \u20b9${NumberFormat.compact().format(p.deposit)}' : null;
 
     final String? areaStr = p.carpetArea != null
-        ? '${p.carpetArea!.toStringAsFixed(0)} sqft carpet'
+        ? '${p.carpetArea!.toStringAsFixed(0)} sqft'
         : (p.builtUpArea != null
-              ? '${p.builtUpArea!.toStringAsFixed(0)} sqft builtup'
+              ? '${p.builtUpArea!.toStringAsFixed(0)} sqft'
               : (p.areaValue != null
                     ? '${p.areaValue!.toStringAsFixed(0)} ${p.areaUnit}'
                     : null));
@@ -393,13 +394,14 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
       for (int i = 0; i < chips.length; i += 2) {
         rows.add(
           Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             children: [
-              chips[i],
-              if (i + 1 < chips.length) ...[
-                const SizedBox(width: 5),
-                chips[i + 1],
-              ],
+              Expanded(child: chips[i]),
+              const SizedBox(width: 5),
+              if (i + 1 < chips.length)
+                Expanded(child: chips[i + 1])
+              else
+                const Expanded(child: SizedBox.shrink()),
             ],
           ),
         );
@@ -520,7 +522,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                               'Avail: $availStr',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
-                                color: cSub,
+                                color: Colors.black,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -579,7 +581,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                             locStr,
                             style: GoogleFonts.inter(
                               fontSize: 11,
-                              color: cMuted,
+                              color: Colors.black,
                               height: 1.2,
                             ),
                             maxLines: 2,
@@ -610,14 +612,14 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                           Icon(
                             Icons.calendar_today_outlined,
                             size: 10,
-                            color: cMuted,
+                            color: Colors.black,
                           ),
                           const SizedBox(width: 3),
                           Text(
                             dateStr,
                             style: GoogleFonts.inter(
                               fontSize: 11,
-                              color: cMuted,
+                              color: Colors.black,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -738,7 +740,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                               fp = '+91${fp.replaceFirst(RegExp(r'^0+'), '')}';
                             }
                             final msg = Uri.encodeComponent(
-                              'Hi, I saw your property listing for ${p.flatType ?? p.category.value} in ${p.societyName ?? p.area} on One More Deal. Please share details.',
+                              'Hi,\nI saw your property listing\n${p.flatType ?? p.category.value} in ${p.societyName ?? p.area} on\nOne More Deal Broker App.\nPlease share details.',
                             );
                             final uri = Uri.parse(
                               'whatsapp://send?phone=$fp&text=$msg',
@@ -1074,12 +1076,10 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                 ),
                 const Spacer(),
                 Text(
-                  DateFormat(
-                    'd MMM',
-                  ).format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
+                  DateFormat('MM/yyyy').format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    color: cMuted,
+                    color: Colors.black,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1141,7 +1141,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                   infoChip(
                     Icons.event_outlined,
                     'Possession',
-                    DateFormat('MMM yy').format(p.possessionDate!),
+                    DateFormat('MM/yyyy').format(p.possessionDate!),
                   ),
                 if (p.areaValue != null)
                   infoChip(
@@ -1367,14 +1367,60 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             automaticallyImplyLeading: false,
-            title: Text(
-              'Discover',
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.charcoal,
-                letterSpacing: -0.3,
-              ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Discover',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.charcoal,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                if (_currentFilter.area != null && _currentFilter.area!.trim().isNotEmpty)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.location_on_rounded, size: 11, color: AppColors.primaryLight),
+                      const SizedBox(width: 2),
+                      Flexible(
+                        child: Text(
+                          _currentFilter.area!.trim(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.primaryLight,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else if (_currentFilter.city != null && _currentFilter.city!.trim().isNotEmpty)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.location_city_rounded, size: 11, color: AppColors.mediumGray),
+                      const SizedBox(width: 2),
+                      Flexible(
+                        child: Text(
+                          _currentFilter.city!.trim(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.mediumGray,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
             actions: [
               // Sort icon
@@ -1431,25 +1477,6 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                 ),
               ),
             ],
-          ),
-
-          // ── Sticky Builder/Broker Quick-Filter ──
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _QuickFilterBarDelegate(
-              userTypeFilter: _currentFilter.userTypeFilter,
-              onUserTypeChanged: (ut) {
-                setState(() {
-                  _currentFilter.userTypeFilter = ut;
-                });
-                _loadProperties();
-              },
-              currentFilter: _currentFilter,
-              onFilterChanged: (newFilter) {
-                setState(() => _currentFilter = newFilter);
-                _loadProperties();
-              },
-            ),
           ),
 
           // ── Content ──
