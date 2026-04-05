@@ -390,7 +390,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                             Expanded(
                               child: Column(
                                 children: [
-                                  // City Dropdown
+                                  // City Search
                                   Row(
                                     children: [
                                       Text(
@@ -404,28 +404,84 @@ class _HomePageScreenState extends State<HomePageScreen> {
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            value: _selectedCity,
-                                            isExpanded: true,
-                                            icon: const Icon(
-                                              Icons.keyboard_arrow_down_rounded,
-                                              size: 20,
-                                              color: AppColors.mediumGray,
-                                            ),
-                                            style: GoogleFonts.inter(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.charcoal,
-                                            ),
-                                            items: _cityOptions.map((city) {
-                                              return DropdownMenuItem(
-                                                value: city,
-                                                child: Text(city),
-                                              );
-                                            }).toList(),
-                                            onChanged: _onCityChanged,
+                                        child: Autocomplete<String>(
+                                          key: ValueKey(_selectedCity),
+                                          initialValue: TextEditingValue(
+                                            text: _selectedCity,
                                           ),
+                                          optionsBuilder: (
+                                            TextEditingValue textEditingValue,
+                                          ) {
+                                            if (textEditingValue.text.isEmpty) {
+                                              return _cityOptions;
+                                            }
+                                            return _cityOptions.where((
+                                              String option,
+                                            ) {
+                                              return option
+                                                  .toLowerCase()
+                                                  .contains(
+                                                    textEditingValue.text
+                                                        .toLowerCase(),
+                                                  );
+                                            });
+                                          },
+                                          onSelected: (String selection) {
+                                            _onCityChanged(selection);
+                                            FocusManager
+                                                .instance
+                                                .primaryFocus
+                                                ?.unfocus();
+                                          },
+                                          fieldViewBuilder: (
+                                            context,
+                                            controller,
+                                            focusNode,
+                                            onFieldSubmitted,
+                                          ) {
+                                            return TextField(
+                                              controller: controller,
+                                              focusNode: focusNode,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.charcoal,
+                                              ),
+                                              decoration: InputDecoration(
+                                                hintText: 'Search city',
+                                                hintStyle: GoogleFonts.inter(
+                                                  color: AppColors.mediumGray,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                border: InputBorder.none,
+                                                isDense: true,
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                  vertical: 11,
+                                                ),
+                                              ),
+                                              onSubmitted: (val) {
+                                                final submitted = val.trim();
+                                                if (submitted.isNotEmpty) {
+                                                  String? matchedCity;
+                                                  for (final city
+                                                      in _cityOptions) {
+                                                    if (city.toLowerCase() ==
+                                                        submitted
+                                                            .toLowerCase()) {
+                                                      matchedCity = city;
+                                                      break;
+                                                    }
+                                                  }
+                                                  if (matchedCity != null) {
+                                                    _onCityChanged(matchedCity);
+                                                  }
+                                                }
+                                                onFieldSubmitted();
+                                              },
+                                            );
+                                          },
                                         ),
                                       ),
                                     ],
@@ -454,6 +510,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Autocomplete<String>(
+                                          key: ValueKey(_selectedArea ?? ''),
                                           initialValue: TextEditingValue(text: _selectedArea ?? ''),
                                           optionsBuilder: (TextEditingValue textEditingValue) {
                                             if (textEditingValue.text.isEmpty) {
