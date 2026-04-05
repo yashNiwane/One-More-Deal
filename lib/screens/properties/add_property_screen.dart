@@ -35,7 +35,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   String _selectedAreaType = 'Carpet Area';
   DateTime? _availabilityDate;
   String? _selectedFlatBhk;
-  static const _residentialBhkList = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK', '6 BHK', '7 BHK', 'Bungalow'];
+  static const _residentialBhkList = ['1 RK', '1 BHK', '1.5 BHK', '2 BHK', '2.5 BHK', '3 BHK', '3.5 BHK', '4 BHK', '4.5 BHK', '5 BHK', '5.5 BHK', '6 BHK', '7 BHK', 'Bungalow'];
   static const _commercialTypeList = ['Office Spaces', 'Retail & Shops', 'Industrial & Warehousing', 'Co-working Spaces'];
 
   int? _selectedFloor;
