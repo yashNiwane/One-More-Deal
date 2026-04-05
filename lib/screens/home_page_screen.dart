@@ -694,7 +694,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
         const SizedBox(height: 10),
         _buildActionCard(
           title: 'Builder Projects',
-          subtitle: 'New launches',
+          subtitle: 'New properties',
           icon: Icons.business_center_rounded,
           iconColor: AppColors.success,
           isFullWidth: true,
@@ -720,10 +720,14 @@ class _HomePageScreenState extends State<HomePageScreen> {
     bool isFullWidth = false,
   }) {
     final iColor = iconColor ?? AppColors.primary;
+    final subtitleColor = (subtitle.toLowerCase() == 'residential' || subtitle.toLowerCase() == 'commercial')
+        ? Colors.black
+        : AppColors.iosSecondaryLabel;
+
     final baseStyle = GoogleFonts.inter(
       fontSize: 15,
       fontWeight: FontWeight.w600,
-      color: AppColors.iosSecondaryLabel,
+      color: subtitleColor,
     );
 
     return InkWell(
@@ -735,10 +739,10 @@ class _HomePageScreenState extends State<HomePageScreen> {
           vertical: isFullWidth ? 24 : 20,
         ),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: iColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: AppColors.lightGray.withValues(alpha: 0.95),
+            color: iColor.withValues(alpha: 0.25),
             width: 1,
           ),
         ),
