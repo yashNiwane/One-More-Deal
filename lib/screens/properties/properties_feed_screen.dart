@@ -1065,7 +1065,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'NEW LAUNCH',
+                    'NEW PROPERTY',
                     style: GoogleFonts.inter(
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
