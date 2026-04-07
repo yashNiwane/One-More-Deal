@@ -49,6 +49,8 @@ dependencies:
   data_table_2: ^2.5.18
   image_picker: ^1.1.2
   sendotp_flutter_sdk: ^0.0.2
+  excel: ^4.0.6
+  share_plus: ^11.1.0
 
 dev_dependencies:
   flutter_test:

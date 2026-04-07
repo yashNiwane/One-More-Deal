@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
+
+import 'package:excel/excel.dart' as excel_pkg;
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/app_colors.dart';
 import '../../services/database_service.dart';
@@ -319,6 +324,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             hint: 'Search suspension rows',
             query: query,
             rowsPerPage: rowsPerPage,
+            exportEnabled: sorted.isNotEmpty,
+            onExportTap: () => _exportSuspensionsToExcel(title: title, rows: sorted),
             onQueryChanged: (v) => setState(() {
               if (is7Days) {
                 _suspension7Query = v;
@@ -527,6 +534,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             hint: 'Search payment rows',
             query: query,
             rowsPerPage: rowsPerPage,
+            exportEnabled: sorted.isNotEmpty,
+            onExportTap: () => _exportPaymentsToExcel(title: title, rows: sorted),
             onQueryChanged: (v) => setState(() {
               if (is7Days) {
                 _payment7Query = v;
@@ -716,7 +725,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     );
   }
 
-  Widget _compactSection({required String title, required Widget child}) {
+  Widget _compactSection({
+    required String title,
+    required Widget child,
+  }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
@@ -727,19 +739,154 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppColors.charcoal,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.charcoal,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           child,
         ],
       ),
     );
+  }
+
+  Future<void> _exportSuspensionsToExcel({
+    required String title,
+    required List<Map<String, dynamic>> rows,
+  }) async {
+    final excel = excel_pkg.Excel.createExcel();
+    final sheetName = _safeSheetName(title);
+    final sheet = excel[sheetName];
+
+    sheet.appendRow([
+      excel_pkg.TextCellValue('No'),
+      excel_pkg.TextCellValue('Type'),
+      excel_pkg.TextCellValue('Name'),
+      excel_pkg.TextCellValue('Number'),
+      excel_pkg.TextCellValue('Current Adds'),
+      excel_pkg.TextCellValue('Valid Till'),
+      excel_pkg.TextCellValue('Days'),
+    ]);
+
+    for (int i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      sheet.appendRow([
+        excel_pkg.IntCellValue(i + 1),
+        excel_pkg.TextCellValue(_shortType(row['userType'])),
+        excel_pkg.TextCellValue(row['name']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(row['phone']?.toString() ?? '-'),
+        excel_pkg.IntCellValue((row['currentAdds'] as num?)?.toInt() ?? 0),
+        excel_pkg.TextCellValue(_formatDate(row['validTill'] as DateTime?)),
+        excel_pkg.IntCellValue((row['daysLeft'] as num?)?.toInt() ?? 0),
+      ]);
+    }
+
+    await _shareExcelFile(
+      excel: excel,
+      fileName: _safeFileName(title),
+      successMessage: '$title exported.',
+    );
+  }
+
+  Future<void> _exportPaymentsToExcel({
+    required String title,
+    required List<Map<String, dynamic>> rows,
+  }) async {
+    final excel = excel_pkg.Excel.createExcel();
+    final sheetName = _safeSheetName(title);
+    final sheet = excel[sheetName];
+
+    sheet.appendRow([
+      excel_pkg.TextCellValue('No'),
+      excel_pkg.TextCellValue('Name'),
+      excel_pkg.TextCellValue('Number'),
+      excel_pkg.TextCellValue('Transaction No'),
+      excel_pkg.TextCellValue('Payment Date'),
+      excel_pkg.TextCellValue('Amount'),
+      excel_pkg.TextCellValue('Validity Days'),
+      excel_pkg.TextCellValue('Validity Till'),
+    ]);
+
+    for (int i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      sheet.appendRow([
+        excel_pkg.IntCellValue(i + 1),
+        excel_pkg.TextCellValue(row['name']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(row['phone']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(row['paymentRef']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(_formatDate(row['paymentDate'] as DateTime?)),
+        excel_pkg.TextCellValue(_formatAmount(row['amount'])),
+        excel_pkg.IntCellValue((row['validityDays'] as num?)?.toInt() ?? 0),
+        excel_pkg.TextCellValue(_formatDate(row['endsAt'] as DateTime?)),
+      ]);
+    }
+
+    await _shareExcelFile(
+      excel: excel,
+      fileName: _safeFileName(title),
+      successMessage: '$title exported.',
+    );
+  }
+
+  Future<void> _shareExcelFile({
+    required excel_pkg.Excel excel,
+    required String fileName,
+    required String successMessage,
+  }) async {
+    try {
+      final bytes = excel.encode();
+      if (bytes == null) throw Exception('Failed to generate Excel file.');
+      final fileBytes = Uint8List.fromList(bytes);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile.fromData(
+              fileBytes,
+              mimeType:
+                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              name: '$fileName.xlsx',
+            ),
+          ],
+        ),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Excel export failed: $e')),
+      );
+    }
+  }
+
+  String _safeSheetName(String title) {
+    final cleaned = title.replaceAll(RegExp(r'[\\/*?:\[\]]'), '').trim();
+    if (cleaned.isEmpty) return 'Sheet1';
+    return cleaned.length > 31 ? cleaned.substring(0, 31) : cleaned;
+  }
+
+  String _safeFileName(String title) {
+    final cleaned = title
+        .replaceAll(RegExp(r'[^a-zA-Z0-9 _-]'), '')
+        .trim()
+        .replaceAll(' ', '_');
+    final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    final prefix = cleaned.isEmpty ? 'admin_table' : cleaned;
+    return '${prefix}_$stamp';
   }
 
   Widget _tableText(String value, {bool alignRight = false}) {
@@ -761,6 +908,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     required String hint,
     required String query,
     required int rowsPerPage,
+    required bool exportEnabled,
+    required VoidCallback onExportTap,
     required ValueChanged<String> onQueryChanged,
     required ValueChanged<int> onRowsPerPageChanged,
   }) {
@@ -809,6 +958,34 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   ),
                 ),
               ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: exportEnabled
+                ? const Color(0xFFE8F5E9)
+                : AppColors.offWhite,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: exportEnabled
+                  ? const Color(0xFF2E7D32).withValues(alpha: 0.25)
+                  : AppColors.primary.withValues(alpha: 0.12),
+            ),
+          ),
+          child: IconButton(
+            onPressed: exportEnabled ? onExportTap : null,
+            tooltip: 'Download Excel',
+            padding: EdgeInsets.zero,
+            icon: FaIcon(
+              FontAwesomeIcons.fileExcel,
+              size: 15,
+              color: exportEnabled
+                  ? const Color(0xFF1B5E20)
+                  : AppColors.iosSecondaryLabel,
             ),
           ),
         ),

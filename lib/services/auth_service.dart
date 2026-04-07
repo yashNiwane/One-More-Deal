@@ -120,7 +120,11 @@ class AuthService {
   static bool get isLoggedIn => _p.getBool(_keyIsLoggedIn) ?? false;
   static String get userPhone => _p.getString(_keyUserPhone) ?? '';
 
-  static const _adminPhoneLast10 = '9356965876';
+  static const Set<String> _adminPhoneLast10 = {
+    '9356965876',
+    '9158120359',
+    '9209182221',
+  };
 
   static String _digitsOnly(String s) => s.replaceAll(RegExp(r'\\D'), '');
 
@@ -130,7 +134,7 @@ class AuthService {
     return d.substring(d.length - 10);
   }
 
-  static bool get isAdmin => _last10Digits(userPhone) == _adminPhoneLast10;
+  static bool get isAdmin => _adminPhoneLast10.contains(_last10Digits(userPhone));
 
   static bool get isProfileComplete {
     // Primary: check in-memory user
