@@ -766,6 +766,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }) async {
     final excel = excel_pkg.Excel.createExcel();
     final sheetName = _safeSheetName(title);
+    excel.rename('Sheet1', sheetName);
     final sheet = excel[sheetName];
 
     sheet.appendRow([
@@ -804,6 +805,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }) async {
     final excel = excel_pkg.Excel.createExcel();
     final sheetName = _safeSheetName(title);
+    excel.rename('Sheet1', sheetName);
     final sheet = excel[sheetName];
 
     sheet.appendRow([
@@ -884,9 +886,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         .replaceAll(RegExp(r'[^a-zA-Z0-9 _-]'), '')
         .trim()
         .replaceAll(' ', '_');
-    final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final prefix = cleaned.isEmpty ? 'admin_table' : cleaned;
-    return '${prefix}_$stamp';
+    final stamp = DateFormat('ddMMM_HHmm').format(DateTime.now());
+    final prefix = cleaned.isEmpty ? 'Report' : cleaned;
+    return 'OMD_Report_${prefix}_$stamp';
   }
 
   Widget _tableText(String value, {bool alignRight = false}) {
