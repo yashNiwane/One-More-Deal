@@ -882,13 +882,25 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   String _safeFileName(String title) {
-    final cleaned = title
-        .replaceAll(RegExp(r'[^a-zA-Z0-9 _-]'), '')
-        .trim()
-        .replaceAll(' ', '_');
+    String shortName = 'Report';
+    if (title.contains('7 Days') && title.contains('Suspension')) {
+      shortName = '7D_Suspensions';
+    } else if (title.contains('30 Days') && title.contains('Suspension')) {
+      shortName = '30D_Suspensions';
+    } else if (title.contains('7 Days') && title.contains('Payment')) {
+      shortName = '7D_Payments';
+    } else if (title.contains('30 Days') && title.contains('Payment')) {
+      shortName = '30D_Payments';
+    } else {
+      shortName = title
+          .replaceAll(RegExp(r'[^a-zA-Z0-9 _-]'), '')
+          .trim()
+          .replaceAll(' ', '_');
+      if (shortName.isEmpty) shortName = 'Report';
+    }
+
     final stamp = DateFormat('ddMMM_HHmm').format(DateTime.now());
-    final prefix = cleaned.isEmpty ? 'Report' : cleaned;
-    return 'OMD_Report_${prefix}_$stamp';
+    return 'OMD_${shortName}_$stamp';
   }
 
   Widget _tableText(String value, {bool alignRight = false}) {
