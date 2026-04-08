@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:excel/excel.dart' as excel_pkg;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -849,15 +850,16 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       final bytes = excel.encode();
       if (bytes == null) throw Exception('Failed to generate Excel file.');
       final fileBytes = Uint8List.fromList(bytes);
+      final tempFile = File('${Directory.systemTemp.path}/$fileName.xlsx');
+      await tempFile.writeAsBytes(fileBytes, flush: true);
 
       await SharePlus.instance.share(
         ShareParams(
           files: [
-            XFile.fromData(
-              fileBytes,
+            XFile(
+              tempFile.path,
               mimeType:
                   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-              name: '$fileName.xlsx',
             ),
           ],
         ),
@@ -899,8 +901,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       if (shortName.isEmpty) shortName = 'Report';
     }
 
-    final stamp = DateFormat('ddMMM_HHmm').format(DateTime.now());
-    return 'OMD_${shortName}_$stamp';
+    return 'OMD_$shortName';
   }
 
   Widget _tableText(String value, {bool alignRight = false}) {
