@@ -319,9 +319,9 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
     //     ? 'Deposit \u20b9${NumberFormat.compact().format(p.deposit)}' : null;
 
     final String? areaStr = p.carpetArea != null
-        ? '${p.carpetArea!.toStringAsFixed(0)} sqft'
+        ? '${p.carpetArea!.toStringAsFixed(0)} sqft Carpet'
         : (p.builtUpArea != null
-              ? '${p.builtUpArea!.toStringAsFixed(0)} sqft'
+              ? '${p.builtUpArea!.toStringAsFixed(0)} sqft Built-up'
               : (p.areaValue != null
                     ? '${p.areaValue!.toStringAsFixed(0)} ${p.areaUnit}'
                     : null));
@@ -351,7 +351,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
 
     // ── Single chip: fills its Expanded slot ────────
     Widget gChip(String label, IconData icon) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
       decoration: BoxDecoration(
         color: cChip,
         borderRadius: BorderRadius.circular(5),
@@ -369,7 +369,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 10,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 color: cChipTxt,
               ),
@@ -380,9 +380,9 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
     );
 
     final chips = <Widget>[
+      if (areaStr != null) gChip(areaStr, Icons.square_foot_outlined),
       if (p.flatType?.trim().isNotEmpty == true)
         gChip(p.flatType!.trim(), Icons.bed_outlined),
-      if (areaStr != null) gChip(areaStr, Icons.square_foot_outlined),
       if (floorStr != null) gChip(floorStr, Icons.layers_outlined),
       if (parkingStr != null) gChip(parkingStr, Icons.directions_car_outlined),
       if (furnishStr != null) gChip(furnishStr, Icons.chair_outlined),
@@ -390,14 +390,25 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
 
     // ── 2-column chip grid aligned right ──────────────
     Widget chipGrid() {
-      final rows = <Widget>[];
-      for (int i = 0; i < chips.length; i += 2) {
+      if (chips.isEmpty) return const SizedBox.shrink();
+      
+      // First chip (area) takes full width
+      final rows = <Widget>[
+        chips[0],
+      ];
+      
+      if (chips.length > 1) {
+        rows.add(const SizedBox(height: 5));
+      }
+      
+      // Remaining chips in 2-column layout
+      for (int i = 1; i < chips.length; i += 2) {
         rows.add(
           Row(
             mainAxisSize: MainAxisSize.max,
             children: [
               Expanded(child: chips[i]),
-              const SizedBox(width: 5),
+              const SizedBox(width: 4),
               if (i + 1 < chips.length)
                 Expanded(child: chips[i + 1])
               else
@@ -466,12 +477,12 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                       ),
                       child: Text(
                         badgeLabel,
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: badgeColor,
-                          letterSpacing: 0.2,
-                        ),
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: badgeColor,
+                            letterSpacing: 0.2,
+                          ),
                       ),
                     ),
 
@@ -486,7 +497,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                           child: Text(
                             priceStr,
                             style: GoogleFonts.inter(
-                              fontSize: 18,
+                              fontSize: 19,
                               fontWeight: FontWeight.w800,
                               color: cInk,
                               letterSpacing: -0.5,
@@ -521,7 +532,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                             child: Text(
                               'Avail: $availStr',
                               style: GoogleFonts.inter(
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: Colors.black,
                               ),
                               maxLines: 1,
@@ -552,7 +563,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                             child: Text(
                               societyName,
                               style: GoogleFonts.inter(
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: cInk,
                               ),
@@ -580,7 +591,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                           child: Text(
                             locStr,
                             style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: Colors.black,
                               height: 1.2,
                             ),
@@ -618,7 +629,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                           Text(
                             dateStr,
                             style: GoogleFonts.inter(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: Colors.black,
                               fontWeight: FontWeight.w500,
                             ),
@@ -661,7 +672,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                           child: Text(
                             companyOrName,
                             style: GoogleFonts.inter(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: cSub,
                             ),
@@ -740,7 +751,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                               fp = '+91${fp.replaceFirst(RegExp(r'^0+'), '')}';
                             }
                             final msg = Uri.encodeComponent(
-                              'Hi,\nI saw your property listing\n${p.flatType ?? p.category.value} in ${p.societyName ?? p.area} on\nOne More Deal Broker App.\nPlease share details.',
+                              'Hi,\nI saw your property listing\n${p.flatType ?? p.category.value} in ${p.societyName ?? p.area} on\nOne More Deal™ Broker App.\nPlease share details.',
                             );
                             final uri = Uri.parse(
                               'whatsapp://send?phone=$fp&text=$msg',
@@ -1307,7 +1318,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                                     '+91${fp.replaceFirst(RegExp(r'^0+'), '')}';
                               }
                               final msg = Uri.encodeComponent(
-                                'Hi, I saw your project ${p.societyName ?? p.area} on One More Deal.',
+                                'Hi, I saw your project ${p.societyName ?? p.area} on One More Deal™.',
                               );
                               final uri = Uri.parse(
                                 'whatsapp://send?phone=$fp&text=$msg',

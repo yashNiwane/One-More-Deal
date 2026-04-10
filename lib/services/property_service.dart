@@ -98,6 +98,11 @@ class PropertyService {
     return DatabaseService.instance.getUserPhoneById(userId);
   }
 
+  /// Returns distinct cities from properties table.
+  static Future<List<String>> getCities({int limit = 50}) async {
+    return DatabaseService.instance.getCities(limit: limit);
+  }
+
   // ── Area Autocomplete ──────────────────────────────────────────────────
 
   /// Searches for city areas matching the query string.

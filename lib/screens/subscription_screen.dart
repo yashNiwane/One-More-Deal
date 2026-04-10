@@ -29,7 +29,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   XFile? _selectedScreenshot;
 
   static const String _upiId = '9356965876@ybl';
-  static const String _upiPayeeName = 'One More Deal';
+  static const String _upiPayeeName = 'One More Deal™';
 
   int get _amountInRupees {
     switch (_selectedPlan) {

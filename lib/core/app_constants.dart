@@ -9,7 +9,7 @@ class AppAssets {
 class AppStrings {
   AppStrings._();
 
-  static const String appName = 'One More Deal';
+  static const String appName = 'One More Deal™';
   static const String tagline = 'Your Smart Real Estate Marketplace';
   static const String description =
       'Connect with top brokers and builders. Find your perfect property deal — faster, smarter, simpler.';

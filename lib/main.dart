@@ -47,7 +47,7 @@ class OneMoreDealApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'One More Deal',
+      title: 'One More Deal™',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       builder: (context, child) {

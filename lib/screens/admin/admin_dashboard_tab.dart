@@ -151,7 +151,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         children: [
           Expanded(
             child: Text(
-              'One More Deal - Admin Dashboard',
+              'One More Deal™ - Admin Dashboard',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,

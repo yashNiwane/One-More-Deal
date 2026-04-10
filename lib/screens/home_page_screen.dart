@@ -41,12 +41,13 @@ enum _HomeSortOption {
 class _HomePageScreenState extends State<HomePageScreen> {
   static const String _cityPrefKey = 'home_selected_city';
   static const String _areaPrefKey = 'home_selected_area';
-  static const List<String> _cityOptions = ['Pune'];
 
   bool _isLoading = true;
   bool _isAreaLoading = false;
+  bool _isCityLoading = false;
   List<PropertyModel> _properties = [];
   List<String> _areaOptions = [];
+  List<String> _cityOptions = [];
   final _HomeSortOption _sortOption = _HomeSortOption.newest;
   String _selectedCity = 'Pune';
   String? _selectedArea;
@@ -64,8 +65,33 @@ class _HomePageScreenState extends State<HomePageScreen> {
 
   Future<void> _bootstrapLocationFilters() async {
     await _loadSavedLocationFilters();
+    await _loadCityOptions();
     await _loadAreaOptions();
     await _loadProperties();
+  }
+
+  Future<void> _loadCityOptions() async {
+    setState(() => _isCityLoading = true);
+    try {
+      final cities = await PropertyService.getCities();
+      if (!mounted) return;
+      final unique = cities.toSet().toList()..sort();
+      if (!unique.contains('Pune')) {
+        unique.insert(0, 'Pune');
+      }
+      if (_selectedCity.isNotEmpty && unique.contains(_selectedCity)) {
+        unique.remove(_selectedCity);
+        unique.insert(0, _selectedCity);
+      }
+      setState(() {
+        _cityOptions = unique;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _cityOptions = ['Pune']);
+    } finally {
+      if (mounted) setState(() => _isCityLoading = false);
+    }
   }
 
   Future<void> _loadSavedLocationFilters() async {
@@ -74,9 +100,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
     final area = prefs.getString(_areaPrefKey);
     if (!mounted) return;
     setState(() {
-      _selectedCity = (city != null && _cityOptions.contains(city))
-          ? city
-          : 'Pune';
+      _selectedCity = (city != null && city.trim().isNotEmpty) ? city : 'Pune';
       _selectedArea = (area != null && area.trim().isNotEmpty) ? area : null;
     });
   }
@@ -113,9 +137,11 @@ class _HomePageScreenState extends State<HomePageScreen> {
   }
 
   Future<void> _onCityChanged(String? city) async {
-    if (city == null || city == _selectedCity) return;
+    if (city == null || city.trim().isEmpty) return;
+    final trimmedCity = city.trim();
+    if (trimmedCity == _selectedCity) return;
     setState(() {
-      _selectedCity = city;
+      _selectedCity = trimmedCity;
       _selectedArea = null;
     });
     await _saveLocationFilters();
@@ -321,7 +347,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              'One More Deal',
+                              'One More Deal\u2122',
                               style: GoogleFonts.plusJakartaSans(
                                 color: AppColors.white,
                                 fontSize: 13,
@@ -448,7 +474,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                                                 color: AppColors.charcoal,
                                               ),
                                               decoration: InputDecoration(
-                                                hintText: 'Search city',
+                                                hintText: _isCityLoading ? 'Loading...' : 'Search city',
                                                 hintStyle: GoogleFonts.inter(
                                                   color: AppColors.mediumGray,
                                                   fontSize: 14,
@@ -464,19 +490,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                                               onSubmitted: (val) {
                                                 final submitted = val.trim();
                                                 if (submitted.isNotEmpty) {
-                                                  String? matchedCity;
-                                                  for (final city
-                                                      in _cityOptions) {
-                                                    if (city.toLowerCase() ==
-                                                        submitted
-                                                            .toLowerCase()) {
-                                                      matchedCity = city;
-                                                      break;
-                                                    }
-                                                  }
-                                                  if (matchedCity != null) {
-                                                    _onCityChanged(matchedCity);
-                                                  }
+                                                  _onCityChanged(submitted);
                                                 }
                                                 onFieldSubmitted();
                                               },
@@ -638,7 +652,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 SizedBox(
                   width: cardWidth,
                   child: _buildActionCard(
-                    title: 'Buy',
+                    title: 'Resale',
                     subtitle: 'Residential',
                     icon: Icons.villa_rounded,
                     iconColor: AppColors.primaryLight,
@@ -664,7 +678,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 SizedBox(
                   width: cardWidth,
                   child: _buildActionCard(
-                    title: 'Buy',
+                    title: 'Resale',
                     subtitle: 'Commercial',
                     icon: Icons.store_mall_directory_rounded,
                     iconColor: AppColors.accent,

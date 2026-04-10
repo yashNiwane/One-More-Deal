@@ -37,7 +37,7 @@ class _LandingScreenState extends State<LandingScreen>
     _SlideData(
       image: AppAssets.agentsHandshake,
       tag: '📋 Structured Listings',
-      title: 'One More Deal\nEvery Day',
+      title: 'One More Deal™\nEvery Day',
       subtitle:
           'Filtered, organized, structured listings that make finding property effortless.',
     ),

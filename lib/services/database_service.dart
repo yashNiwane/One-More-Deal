@@ -581,6 +581,17 @@ class DatabaseService {
     return res.map((r) => (r[0] as String).trim()).toList(growable: false);
   }
 
+  /// Returns distinct cities from properties table.
+  Future<List<String>> getCities({int limit = 50}) async {
+    final res = await (await _db).execute(
+      Sql.named(
+        'SELECT DISTINCT city FROM properties WHERE city IS NOT NULL AND TRIM(city) <> \'\' ORDER BY city ASC LIMIT @limit',
+      ),
+      parameters: {'limit': limit},
+    );
+    return res.map((r) => (r[0] as String).trim()).toList(growable: false);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // ENQUIRIES
   // ═══════════════════════════════════════════════════════════════════════
