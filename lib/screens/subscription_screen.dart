@@ -28,7 +28,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   SubscriptionRequestModel? _latestRequest;
   XFile? _selectedScreenshot;
 
-  static const String _phoneNumber = '9356965876';
+  static const String _phoneNumber = '9860999991';
   static const String _upiPayeeName = 'One More Deal™';
 
   int get _amountInRupees {
@@ -87,8 +87,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _openUpiApp() async {
-    // Use phone number with Paytm UPI handle for better compatibility
-    final String upiAddress = '$_phoneNumber@paytm';
+    final String upiAddress = '$_phoneNumber@upi';
     // IMPORTANT: Do not url-encode the UPI address, GPay fails to parse '%40'
     final String urlStr = 'upi://pay?pa=$upiAddress&pn=${Uri.encodeComponent(_upiPayeeName)}&am=$_amountInRupees&cu=INR&tn=OMD+Subscription';
     final uri = Uri.parse(urlStr);

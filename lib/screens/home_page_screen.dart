@@ -624,7 +624,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
       children: [
         Expanded(
           child: Text(
-            'Find one more deal with clarity.',
+            'One More Deal connects Broker to Broker or Builder with Clarity.',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w700,
