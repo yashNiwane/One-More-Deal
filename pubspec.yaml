@@ -51,6 +51,9 @@ dependencies:
   sendotp_flutter_sdk: ^0.0.2
   excel: ^4.0.6
   share_plus: ^11.1.0
+  firebase_core: ^4.7.0
+  firebase_auth: ^6.4.0
+  google_sign_in: ^6.2.2
 
 dev_dependencies:
   flutter_test:

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
-import '../../services/otp_service.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
-import 'otp_verification_screen.dart';
+import '../splash_screen.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
   const PhoneAuthScreen({super.key});
@@ -22,6 +25,10 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   bool _isLoading = false;
   String? _errorText;
 
+  // Google Sign-In state
+  bool _googleSignedIn = false;
+  User? _googleUser;
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +43,34 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     super.dispose();
   }
 
-  Future<void> _sendOTP() async {
+  // ─── Step 1: Google Sign-In ──────────────────────────────────────────────
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorText = null;
+    });
+
+    final user = await FirebaseAuthService.signInWithGoogle();
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (user != null) {
+      setState(() {
+        _googleSignedIn = true;
+        _googleUser = user;
+      });
+      _phoneFocus.requestFocus();
+    } else {
+      setState(() => _errorText =
+          'Google Sign-In failed. Make sure Google Play Services is updated and try again.');
+      HapticFeedback.vibrate();
+    }
+  }
+
+  // ─── Step 2: Link/login with phone via PostgreSQL ────────────────────────
+  // Works for BOTH new users (first-time signup) and returning users (login)
+  Future<void> _continueWithPhone() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -46,35 +80,37 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
     final phone = _phoneController.text.trim();
 
-    final result = await OTPService.sendOTP(phone);
+    try {
+      // AuthService.loginUser uses upsertUser internally:
+      // - New user  → INSERT row into PostgreSQL users table
+      // - Old user  → UPDATE last_login_at in PostgreSQL users table
+      // Either way the user ends up logged in with full session
+      await AuthService.loginUser(phone);
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (!mounted) return;
 
-    if (result.success) {
-      Navigator.of(context).push(
+      // Navigate to SplashScreen which re-evaluates auth and routes to home
+      Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, animation, __) =>
-              OTPVerificationScreen(phone: phone),
+          pageBuilder: (_, animation, __) => const SplashScreen(),
           transitionDuration: const Duration(milliseconds: 400),
-          transitionsBuilder: (_, animation, __, child) {
-            return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(1, 0),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                  parent: animation, curve: Curves.easeOutCubic)),
-              child: child,
-            );
-          },
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
         ),
+        (route) => false,
       );
-    } else {
-      setState(() => _errorText = result.error);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorText = 'Failed to complete sign-in. Please try again.';
+      });
+      debugPrint('[PhoneAuthScreen] Link error: $e');
       HapticFeedback.vibrate();
     }
   }
 
+  // ─── Build ───────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,10 +135,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0x660D1B4B),
-                        Color(0xFF0D1B4B),
-                      ],
+                      colors: [Color(0x660D1B4B), Color(0xFF0D1B4B)],
                     ),
                   ),
                 ),
@@ -123,7 +156,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Enter your\nmobile number',
+                          _googleSignedIn
+                              ? 'Enter your\nmobile number'
+                              : 'Sign in to\nOne More Deal',
                           style: GoogleFonts.plusJakartaSans(
                             color: AppColors.white,
                             fontSize: 32,
@@ -149,7 +184,6 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
               ],
             ),
           ),
-
 
           // ─── Back button ──────────────────────────────────────────
           SafeArea(
@@ -186,13 +220,11 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                 child: Container(
                   decoration: const BoxDecoration(
                     color: AppColors.offWhite,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(32),
-                    ),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(32)),
                   ),
                   child: Column(
                     children: [
-                      // Handle
                       const SizedBox(height: 12),
                       Container(
                         width: 40,
@@ -211,95 +243,223 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Header
-                                Text(
-                                  'Enter your\nmobile number',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.charcoal,
-                                    height: 1.2,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'We\'ll send you a 4-digit OTP to verify your number.',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: AppColors.mediumGray,
-                                    fontSize: 14,
-                                    height: 1.5,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 32),
-
-                                // Phone input
-                                Text(
-                                  'Mobile Number',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.darkGray,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _phoneController,
-                                  focusNode: _phoneFocus,
-                                  keyboardType: TextInputType.phone,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(10),
-                                  ],
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.charcoal,
-                                    letterSpacing: 2,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: '9876543210',
-                                    hintStyle: GoogleFonts.plusJakartaSans(
-                                      color: AppColors.mediumGray,
-                                      fontSize: 18,
-                                      letterSpacing: 2,
+                                // ─── STEP 1: Google Button (before sign-in) ──
+                                if (!_googleSignedIn) ...[
+                                  Text(
+                                    'Get Started',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.charcoal,
+                                      height: 1.2,
+                                      letterSpacing: -0.5,
                                     ),
-                                    prefixIcon: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 14, vertical: 16),
-                                      child: Text(
-                                        '+91 |',
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Sign in with your Google account to continue.',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: AppColors.mediumGray,
+                                      fontSize: 14,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 36),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _isLoading
+                                          ? null
+                                          : _signInWithGoogle,
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16),
+                                        side: const BorderSide(
+                                            color: AppColors.lightGray,
+                                            width: 2),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                      icon: _isLoading
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2),
+                                            )
+                                          : const Icon(
+                                              FontAwesomeIcons.google,
+                                              color: Colors.redAccent,
+                                              size: 20),
+                                      label: Text(
+                                        _isLoading
+                                            ? 'Signing in...'
+                                            : 'Continue with Google',
                                         style: GoogleFonts.plusJakartaSans(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w700,
                                           fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.charcoal,
                                         ),
                                       ),
                                     ),
-                                    prefixIconConstraints:
-                                        const BoxConstraints(),
                                   ),
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty) {
-                                      return 'Please enter your mobile number';
-                                    }
-                                    if (v.length != 10) {
-                                      return 'Enter a valid 10-digit number';
-                                    }
-                                    return null;
-                                  },
-                                  onFieldSubmitted: (_) => _sendOTP(),
-                                ),
+                                ],
 
-                                // Error message
-                                if (_errorText != null) ...[
-                                  const SizedBox(height: 12),
+                                // ─── STEP 2: Phone input (after Google sign-in) ─
+                                if (_googleSignedIn) ...[
+                                  // Google account badge
                                   Container(
                                     padding: const EdgeInsets.all(14),
                                     decoration: BoxDecoration(
-                                      color:
-                                          AppColors.error.withOpacity(0.08),
+                                      color: Colors.green.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color:
+                                              Colors.green.withOpacity(0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle_rounded,
+                                            color: Colors.green, size: 20),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Google account connected',
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  color: Colors.green.shade700,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              Text(
+                                                _googleUser?.email ?? '',
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  color: AppColors.mediumGray,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Allow changing Google account
+                                        GestureDetector(
+                                          onTap: () => setState(() {
+                                            _googleSignedIn = false;
+                                            _googleUser = null;
+                                          }),
+                                          child: Text(
+                                            'Change',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    'Enter your\nmobile number',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.charcoal,
+                                      height: 1.2,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'New users will be registered. Existing users will be logged in.',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: AppColors.mediumGray,
+                                      fontSize: 14,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 28),
+                                  Text(
+                                    'Mobile Number',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.darkGray,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _phoneController,
+                                    focusNode: _phoneFocus,
+                                    keyboardType: TextInputType.phone,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(10),
+                                    ],
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.charcoal,
+                                      letterSpacing: 2,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: '9876543210',
+                                      hintStyle: GoogleFonts.plusJakartaSans(
+                                        color: AppColors.mediumGray,
+                                        fontSize: 18,
+                                        letterSpacing: 2,
+                                      ),
+                                      prefixIcon: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 16),
+                                        child: Text(
+                                          '+91 |',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                      prefixIconConstraints:
+                                          const BoxConstraints(),
+                                    ),
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) {
+                                        return 'Please enter your mobile number';
+                                      }
+                                      if (v.length != 10) {
+                                        return 'Enter a valid 10-digit number';
+                                      }
+                                      return null;
+                                    },
+                                    onFieldSubmitted: (_) => _continueWithPhone(),
+                                  ),
+                                  const SizedBox(height: 32),
+                                  GradientButton(
+                                    label: 'Continue',
+                                    icon: Icons.arrow_forward_rounded,
+                                    isLoading: _isLoading,
+                                    onPressed: _continueWithPhone,
+                                  ),
+                                ],
+
+                                // ─── Error message ─────────────────────────
+                                if (_errorText != null) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withOpacity(0.08),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                           color: AppColors.error
@@ -327,18 +487,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                                   ),
                                 ],
 
-                                const SizedBox(height: 36),
-
-                                GradientButton(
-                                  label: AppStrings.sendOTP,
-                                  icon: Icons.send_rounded,
-                                  isLoading: _isLoading,
-                                  onPressed: _sendOTP,
-                                ),
-
-                                const SizedBox(height: 24),
-
-                                // Trust badges
+                                const SizedBox(height: 28),
                                 _TrustBadges(),
                               ],
                             ),
@@ -362,11 +511,11 @@ class _TrustBadges extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _Badge(icon: Icons.lock_outline_rounded, label: 'Secure OTP'),
+        _Badge(icon: Icons.shield_outlined, label: 'Secure'),
         const SizedBox(width: 16),
         _Badge(icon: Icons.verified_rounded, label: 'Verified'),
         const SizedBox(width: 16),
-        _Badge(icon: Icons.phone_android_rounded, label: 'Mobile Only'),
+        _Badge(icon: Icons.lock_outline_rounded, label: 'Private'),
       ],
     );
   }
