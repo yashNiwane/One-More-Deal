@@ -373,35 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 24),
         _buildSectionHeader('Details'),
         const SizedBox(height: 8),
-        _buildGroupedCard([
-          _buildListRow(Icons.person_outlined, 'Name', AuthService.userName),
-          _buildListRow(Icons.phone_outlined, 'Phone', AuthService.userPhone),
-          _buildListRow(Icons.business_outlined, 'Type', AuthService.userType),
-          _buildListRow(
-            Icons.location_city_outlined,
-            'City',
-            AuthService.userCity,
-          ),
-          _buildListRow(
-            Icons.apartment_outlined,
-            'Company',
-            AuthService.userCompanyName,
-            isLast: false,
-          ),
-          if (AuthService.userType == 'Broker')
-            _buildListRow(
-              Icons.verified_outlined,
-              'RERA',
-              AuthService.userReraNo,
-            ),
-          _buildListRow(Icons.map_outlined, 'Area', AuthService.userArea),
-          _buildListRow(
-            Icons.location_on_outlined,
-            'Office',
-            AuthService.userOfficeAddress,
-            isLast: true,
-          ),
-        ]),
+        _buildDetailsGrid(AuthService.userType),
         const SizedBox(height: 24),
         _buildSectionHeader('Account'),
         const SizedBox(height: 8),
@@ -526,7 +498,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _companyCtrl,
                   isLast: false,
                 ),
-                if (_userType == 'Broker') ...[
+                if (_userType == 'Broker' || _userType == 'Builder') ...[
                   Container(
                     height: 0.5,
                     color: AppColors.iosSeparator.withValues(alpha: 0.3),
@@ -678,6 +650,115 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildDetailsGrid(String userType) {
+    final items = [
+      (Icons.person_outlined, 'Name', AuthService.userName),
+      (Icons.phone_outlined, 'Phone', AuthService.userPhone),
+      (Icons.business_outlined, 'Type', AuthService.userType),
+      (Icons.location_city_outlined, 'City', AuthService.userCity),
+      (Icons.apartment_outlined, 'Company', AuthService.userCompanyName),
+      if (userType == 'Broker' || userType == 'Builder')
+        (Icons.verified_outlined, 'RERA', AuthService.userReraNo),
+      (Icons.map_outlined, 'Area', AuthService.userArea),
+      (Icons.location_on_outlined, 'Office', AuthService.userOfficeAddress),
+    ];
+
+    // Build rows of 2 cells each
+    final rows = <Widget>[];
+    for (int i = 0; i < items.length; i += 2) {
+      final left = items[i];
+      final right = i + 1 < items.length ? items[i + 1] : null;
+      final isLastRow = i + 2 >= items.length;
+      rows.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _buildDetailCell(left.$1, left.$2, left.$3)),
+              Container(
+                width: 0.5,
+                color: AppColors.iosSeparator.withValues(alpha: 0.3),
+              ),
+              Expanded(
+                child: right != null
+                    ? _buildDetailCell(right.$1, right.$2, right.$3)
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (!isLastRow) {
+        rows.add(
+          Container(
+            height: 0.5,
+            color: AppColors.iosSeparator.withValues(alpha: 0.3),
+          ),
+        );
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(children: rows),
+    );
+  }
+
+  Widget _buildDetailCell(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 18, color: AppColors.iosSystemBlue),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.iosSecondaryLabel,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value.isNotEmpty ? value : '-',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.charcoal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildListRow(
     IconData icon,
     String label,
@@ -689,34 +770,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 20, color: AppColors.iosSystemBlue),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 5,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.charcoal,
-                  ),
-                ),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(icon, size: 20, color: AppColors.iosSystemBlue),
               ),
               const SizedBox(width: 12),
               Expanded(
-                flex: 4,
-                child: Text(
-                  value.isNotEmpty ? value : '-',
-                  textAlign: TextAlign.right,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    color: AppColors.darkGray,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.charcoal,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value.isNotEmpty ? value : '-',
+                      textAlign: TextAlign.left,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: AppColors.darkGray,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

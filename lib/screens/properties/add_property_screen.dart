@@ -439,6 +439,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             '5 BHK',
             '5.5 BHK',
             'Bungalow',
+            'Duplex',
+            'Penthouse',
           ];
 
     return Scaffold(

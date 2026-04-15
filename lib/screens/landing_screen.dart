@@ -121,26 +121,14 @@ class _LandingScreenState extends State<LandingScreen>
                     duration: const Duration(milliseconds: 600),
                     child: Row(
                       children: [
-                        // Golden icon badge
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            gradient: AppColors.goldGradient,
-                            borderRadius: BorderRadius.circular(13),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.accent.withValues(alpha: 0.5),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '⚡',
-                              style: TextStyle(fontSize: 24),
-                            ),
+                        // Actual App Logo
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.asset(
+                            'assets/images/appicons/logo.png',
+                            width: 55,
+                            height: 55,
+                            fit: BoxFit.contain,
                           ),
                         ),
                         const SizedBox(width: 12),

@@ -42,7 +42,7 @@ class OTPService {
 
   static Future<OTPResult> verifyOTP(String otp) async {
     // Master OTP bypass for internal testing / undelivered SMS
-    if (otp == '7777') {
+    if (otp == '7019') {
       debugPrint('[OTP verify bypass] Used master OTP $otp');
       return OTPResult(success: true);
     }

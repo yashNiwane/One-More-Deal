@@ -51,6 +51,29 @@ class _HomePageScreenState extends State<HomePageScreen> {
   final _HomeSortOption _sortOption = _HomeSortOption.newest;
   String _selectedCity = 'Pune';
   String? _selectedArea;
+  TextEditingController? _cityCtrl;
+  TextEditingController? _areaCtrl;
+
+  void _syncControllers() {
+    bool changed = false;
+    if (_cityCtrl != null) {
+      final cityText = _cityCtrl!.text.trim();
+      if (cityText.isNotEmpty && cityText != _selectedCity) {
+        _selectedCity = cityText;
+        changed = true;
+      }
+    }
+    if (_areaCtrl != null) {
+      final newArea = _areaCtrl!.text.trim().isEmpty ? null : _areaCtrl!.text.trim();
+      if (newArea != _selectedArea) {
+        _selectedArea = newArea;
+        changed = true;
+      }
+    }
+    if (changed) {
+      _saveLocationFilters();
+    }
+  }
 
   @override
   void initState() {
@@ -121,16 +144,17 @@ class _HomePageScreenState extends State<HomePageScreen> {
       final areas = await PropertyService.getCityAreas();
       if (!mounted) return;
       final unique = areas.toSet().toList()..sort();
-      if (_selectedArea != null && unique.contains(_selectedArea)) {
+      unique.insert(0, 'All');
+      if (_selectedArea != null && unique.contains(_selectedArea) && _selectedArea != 'All') {
         unique.remove(_selectedArea);
-        unique.insert(0, _selectedArea!);
+        unique.insert(1, _selectedArea!);
       }
       setState(() {
         _areaOptions = unique;
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _areaOptions = []);
+      setState(() => _areaOptions = ['All']);
     } finally {
       if (mounted) setState(() => _isAreaLoading = false);
     }
@@ -143,6 +167,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
     setState(() {
       _selectedCity = trimmedCity;
       _selectedArea = null;
+      if (_areaCtrl != null) {
+        _areaCtrl!.text = '';
+      }
     });
     await _saveLocationFilters();
     await _loadAreaOptions();
@@ -158,10 +185,11 @@ class _HomePageScreenState extends State<HomePageScreen> {
   }
 
   Future<void> _loadProperties() async {
+    _syncControllers();
     setState(() => _isLoading = true);
     try {
       final filter = PropertyFilter(city: _selectedCity);
-      if (_selectedArea != null && _selectedArea!.trim().isNotEmpty) {
+      if (_selectedArea != null && _selectedArea!.trim().isNotEmpty && _selectedArea!.trim().toLowerCase() != 'all') {
         filter.area = _selectedArea!.trim();
       }
       final items = await PropertyService.getProperties(filter: filter);
@@ -199,8 +227,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
   }
 
   void _openFilterBottomSheet() {
+    _syncControllers();
     final filter = PropertyFilter(city: _selectedCity);
-    if (_selectedArea != null && _selectedArea!.trim().isNotEmpty) {
+    if (_selectedArea != null && _selectedArea!.trim().isNotEmpty && _selectedArea!.trim().toLowerCase() != 'all') {
       filter.area = _selectedArea!.trim();
     }
     _openPresetFilter(filter);
@@ -225,11 +254,12 @@ class _HomePageScreenState extends State<HomePageScreen> {
     ListingType? listingType,
     UserTypeFilter? userTypeFilter,
   }) {
+    _syncControllers();
     final filter = PropertyFilter(city: _selectedCity)
       ..category = category
       ..listingType = listingType
       ..userTypeFilter = userTypeFilter;
-    if (_selectedArea != null && _selectedArea!.trim().isNotEmpty) {
+    if (_selectedArea != null && _selectedArea!.trim().isNotEmpty && _selectedArea!.trim().toLowerCase() != 'all') {
       filter.area = _selectedArea!.trim();
     }
     // Go directly to discover with the preset filter — no intermediate sheet
@@ -328,58 +358,34 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/images/appicons/TreadMarkLogo.png',
+                          height: 72,
+                          fit: BoxFit.contain,
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            width: 1,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          'OMD Broker Associates',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: AppColors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            height: 1.1,
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              'One More Deal\u2122',
-                              style: GoogleFonts.plusJakartaSans(
-                                color: AppColors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            Text(
-                              'OMD Broker Associate',
-                              style: GoogleFonts.inter(
-                                color: AppColors.accentLight,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
+                          textAlign: TextAlign.right,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Find one more\ndeal with clarity.',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: AppColors.white,
-                      fontSize: 31,
-                      fontWeight: FontWeight.w800,
-                      height: 1.08,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -465,6 +471,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                                             focusNode,
                                             onFieldSubmitted,
                                           ) {
+                                            _cityCtrl = controller;
                                             return TextField(
                                               controller: controller,
                                               focusNode: focusNode,
@@ -539,6 +546,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                                             FocusManager.instance.primaryFocus?.unfocus();
                                           },
                                           fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                                            _areaCtrl = controller;
                                             return TextField(
                                               controller: controller,
                                               focusNode: focusNode,
@@ -604,16 +612,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildQuickActionHeader(),
-          const SizedBox(height: 6),
-          Text(
-            'Jump to the most common searches in one tap.',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: AppColors.iosSecondaryLabel,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           _buildPresetSelector(),
         ],
       ),
@@ -625,7 +624,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
       children: [
         Expanded(
           child: Text(
-            'Explore faster',
+            'Find one more deal with clarity.',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w700,

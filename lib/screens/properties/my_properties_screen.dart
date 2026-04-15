@@ -544,28 +544,28 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3, bottom: 9),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            size: 10,
-                            color: Colors.black,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            dateStr,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Padding(
+                    //   padding: const EdgeInsets.only(top: 3, bottom: 9),
+                    //   child: Row(
+                    //     mainAxisSize: MainAxisSize.min,
+                    //     children: [
+                    //       Icon(
+                    //         Icons.calendar_today_outlined,
+                    //         size: 10,
+                    //         color: Colors.black,
+                    //       ),
+                    //       const SizedBox(width: 3),
+                    //       Text(
+                    //         dateStr,
+                    //         style: GoogleFonts.inter(
+                    //           fontSize: 11,
+                    //           color: Colors.black,
+                    //           fontWeight: FontWeight.w500,
+                    //         ),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
                     if (chips.isNotEmpty) chipGrid(),
                   ],
                 ),
@@ -886,16 +886,16 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                 const SizedBox(width: 6),
                 _buildActiveBadge(p),
                 const Spacer(),
-                Text(
-                  DateFormat(
-                    'd MMM',
-                  ).format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                // Text(
+                //   DateFormat(
+                //     'd MMM',
+                //   ).format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
+                //   style: GoogleFonts.inter(
+                //     fontSize: 11,
+                //     color: Colors.black,
+                //     fontWeight: FontWeight.w500,
+                //   ),
+                // ),
               ],
             ),
           ),

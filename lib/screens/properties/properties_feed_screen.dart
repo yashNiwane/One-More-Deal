@@ -27,6 +27,7 @@ class PropertiesFeedScreen extends StatefulWidget {
 }
 
 enum _SortOption {
+  recommended('Recommended'),
   newest('Newest First'),
   oldest('Oldest First'),
   priceLow('Price: Low to High'),
@@ -41,7 +42,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
   bool _isLoading = false;
   List<PropertyModel> _properties = [];
   PropertyFilter _currentFilter = PropertyFilter();
-  _SortOption _sortOption = _SortOption.priceLow;
+  _SortOption _sortOption = _SortOption.recommended;
   final GlobalKey _sortIconKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _propertyCardKeys = {};
@@ -52,6 +53,18 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
   List<PropertyModel> get _sorted {
     final list = List<PropertyModel>.from(_properties);
     switch (_sortOption) {
+      case _SortOption.recommended:
+        final now = DateTime.now();
+        // Refreshes every 10 minutes
+        final seed = (now.year * 1000000) + (now.month * 10000) + (now.day * 100) + (now.hour * 6) + (now.minute ~/ 10);
+        list.sort((a, b) {
+          final hashA = (a.id ?? 0) ^ seed;
+          final hashB = (b.id ?? 0) ^ seed;
+          // Simple fast hash to spread values evenly
+          final scoreA = (hashA * 2654435761) % 4294967296;
+          final scoreB = (hashB * 2654435761) % 4294967296;
+          return scoreA.compareTo(scoreB);
+        });
       case _SortOption.newest:
         list.sort(
           (a, b) => (b.refreshedAt ?? b.postedAt ?? DateTime(0)).compareTo(
@@ -615,28 +628,28 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Date
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3, bottom: 9),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            size: 10,
-                            color: Colors.black,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            dateStr,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Padding(
+                    //   padding: const EdgeInsets.only(top: 3, bottom: 9),
+                    //   child: Row(
+                    //     mainAxisSize: MainAxisSize.min,
+                    //     children: [
+                    //       Icon(
+                    //         Icons.calendar_today_outlined,
+                    //         size: 10,
+                    //         color: Colors.black,
+                    //       ),
+                    //       const SizedBox(width: 3),
+                    //       Text(
+                    //         dateStr,
+                    //         style: GoogleFonts.inter(
+                    //           fontSize: 12,
+                    //           color: Colors.black,
+                    //           fontWeight: FontWeight.w500,
+                    //         ),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
                     // 2-column grid of chips - right aligned
                     if (chips.isNotEmpty) chipGrid(),
                   ],
@@ -980,12 +993,12 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 12, color: cMuted),
+            Icon(icon, size: 13, color: cMuted),
             const SizedBox(width: 4),
             Text(
               '$label: ',
               style: GoogleFonts.inter(
-                fontSize: 10,
+                fontSize: 12,
                 color: cSub,
                 fontWeight: FontWeight.w500,
               ),
@@ -993,7 +1006,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
             Text(
               value,
               style: GoogleFonts.inter(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: cInk,
               ),
@@ -1045,33 +1058,6 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: cBadgeBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.apartment_rounded, size: 12, color: cBadgeTxt),
-                      const SizedBox(width: 4),
-                      Text(
-                        'BUILDER',
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: cBadgeTxt,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
                     color: cHeaderAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -1086,14 +1072,14 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  DateFormat('MM/yyyy').format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                // Text(
+                //   DateFormat('MM/yyyy').format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
+                //   style: GoogleFonts.inter(
+                //     fontSize: 13,
+                //     color: Colors.black,
+                //     fontWeight: FontWeight.w500,
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -1107,7 +1093,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                 Text(
                   schemeName,
                   style: GoogleFonts.inter(
-                    fontSize: 16,
+                    fontSize: 19,
                     fontWeight: FontWeight.w800,
                     color: cInk,
                     letterSpacing: -0.3,
@@ -1125,7 +1111,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                       child: Text(
                         [p.area, p.city].join(', '),
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 14,
                           color: cSub,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1152,7 +1138,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                   infoChip(
                     Icons.event_outlined,
                     'Possession',
-                    DateFormat('MM/yyyy').format(p.possessionDate!),
+                    DateFormat('MMM/yyyy').format(p.possessionDate!),
                   ),
                 if (p.areaValue != null)
                   infoChip(
@@ -1248,7 +1234,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                   child: Text(
                     companyOrName,
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: cInk,
                     ),

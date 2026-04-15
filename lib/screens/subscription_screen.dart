@@ -28,7 +28,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   SubscriptionRequestModel? _latestRequest;
   XFile? _selectedScreenshot;
 
-  static const String _upiId = '9356965876@ybl';
+  static const String _phoneNumber = '9356965876';
   static const String _upiPayeeName = 'One More Deal™';
 
   int get _amountInRupees {
@@ -87,22 +87,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _openUpiApp() async {
-    final uri = Uri.parse(
-      'upi://pay?pa=${Uri.encodeComponent(_upiId)}'
-      '&pn=${Uri.encodeComponent(_upiPayeeName)}'
-      '&am=$_amountInRupees'
-      '&cu=INR',
-    );
+    // Use phone number with Paytm UPI handle for better compatibility
+    final String upiAddress = '$_phoneNumber@paytm';
+    // IMPORTANT: Do not url-encode the UPI address, GPay fails to parse '%40'
+    final String urlStr = 'upi://pay?pa=$upiAddress&pn=${Uri.encodeComponent(_upiPayeeName)}&am=$_amountInRupees&cu=INR&tn=OMD+Subscription';
+    final uri = Uri.parse(urlStr);
 
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
       return;
     }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('No UPI app found. Please use the shown UPI ID in your payment app.'),
+        content: Text('No UPI app found. Please use the shown phone number in your payment app.'),
         backgroundColor: AppColors.error,
       ),
     );
@@ -374,7 +373,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'UPI ID: $_upiId',
+                                    'Phone Number: $_phoneNumber',
                                     style: GoogleFonts.inter(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
