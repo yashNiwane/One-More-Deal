@@ -79,7 +79,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     if (!mounted) return;
     // Use direct push but still check subscription to prevent bypass
-    final hasSub = await AuthService.hasActiveSubscription();
+    final isBuilderUser = _userType == 'Builder' || _userType == 'Developer';
+    final hasSub = isBuilderUser
+        ? await AuthService.hasActiveSubscription()
+        : true;
     if (!mounted) return;
 
     Navigator.of(context).pushAndRemoveUntil(
@@ -654,7 +657,7 @@ class _FreeTrialDialog extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              '🎉 Congratulations!',
+              'Welcome to OMD Broker Associates!',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -664,7 +667,7 @@ class _FreeTrialDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Your profile is complete.\nAs a welcome gift, a 1-Month Premium Free Trial has been automatically activated for you!',
+              'Your profile is complete.\nYou are all set to start exploring and posting properties.',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 color: AppColors.mediumGray,

@@ -49,6 +49,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       floorCategory: widget.currentFilter.floorCategory,
       flatType: widget.currentFilter.flatType,
       furnishingStatus: widget.currentFilter.furnishingStatus,
+      availableFor: widget.currentFilter.availableFor,
       userTypeFilter: widget.currentFilter.userTypeFilter,
       minPrice: widget.currentFilter.minPrice,
       maxPrice: widget.currentFilter.maxPrice,
@@ -444,6 +445,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     bool showBhk = !isPlot && !isBuilder;
     bool showFloor = !isPlot && !isBuilder;
     bool showFurnishing = _filter.listingType == ListingType.rent;
+    bool showAvailableFor =
+        isResi && _filter.listingType == ListingType.rent && !isBuilder;
     bool showListingType = isBroker;
     bool showSubcategory = isBroker;
 
@@ -547,6 +550,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                     _filter.category = null;
                                     _filter.listingType = null;
                                     _filter.floorCategory = null;
+                                    _filter.availableFor = null;
                                     _filter.brokerIds = null;
                                   }
                                 });
@@ -572,6 +576,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                       _filter.floorCategory = null;
                                       _societyCtrl.clear();
                                     }
+                                    if (_filter.category != PropertyCategory.residential) {
+                                      _filter.availableFor = null;
+                                    }
                                   });
                                 },
                               ),
@@ -586,6 +593,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                 onTap: (val) {
                                   setState(() {
                                     _filter.listingType = val;
+                                    if (_filter.listingType != ListingType.rent) {
+                                      _filter.availableFor = null;
+                                    }
                                   });
                                 },
                               ),
@@ -637,6 +647,16 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           label: (t) => t,
                           onTap: (val) =>
                               setState(() => _filter.furnishingStatus = val),
+                        ),
+                      ],
+                      if (showAvailableFor) ...[
+                        _sectionHeader('AVAILABLE FOR'),
+                        _chipGroup<String>(
+                          items: const ['Family', 'Bachelor', 'Any'],
+                          selected: _filter.availableFor,
+                          label: (t) => t,
+                          onTap: (val) =>
+                              setState(() => _filter.availableFor = val),
                         ),
                       ],
 

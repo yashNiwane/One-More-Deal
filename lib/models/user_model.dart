@@ -2,6 +2,7 @@
 class UserModel {
   final int id;
   final String phone;
+  final String? email;
   final String? name;
   final UserType? userType;
   final String? city;
@@ -20,6 +21,7 @@ class UserModel {
   const UserModel({
     required this.id,
     required this.phone,
+    this.email,
     this.name,
     this.userType,
     this.city,
@@ -49,6 +51,7 @@ class UserModel {
   factory UserModel.fromMap(Map<String, dynamic> m) => UserModel(
         id:           m['id'] as int,
         phone:        m['phone'] as String,
+        email:        m['email'] as String?,
         name:         m['name'] as String?,
         userType:     UserType.fromString(m['user_type'] as String?),
         city:         m['city'] as String?,
@@ -68,6 +71,7 @@ class UserModel {
   Map<String, dynamic> toMap() => {
         'id':            id,
         'phone':         phone,
+        'email':         email,
         'name':          name,
         'user_type':     userType?.value,
         'city':          city,

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/property_model.dart';
 import '../../models/enquiry_model.dart';
 import '../../services/property_service.dart';
+import '../../services/auth_service.dart';
 
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'filter_bottom_sheet.dart';
@@ -42,13 +43,23 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
   bool _isLoading = false;
   List<PropertyModel> _properties = [];
   PropertyFilter _currentFilter = PropertyFilter();
-  _SortOption _sortOption = _SortOption.recommended;
+  _SortOption _sortOption = _SortOption.priceLow;
   final GlobalKey _sortIconKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _propertyCardKeys = {};
   int? _highlightedPropertyId;
   bool _didFocusInitialProperty = false;
   bool _didRelaxInitialUserTypeFilter = false;
+  bool get _isBuilderLoggedIn =>
+      AuthService.userType == 'Builder' || AuthService.userType == 'Developer';
+  bool get _isBuilderPropertiesView =>
+      _currentFilter.userTypeFilter == UserTypeFilter.builder;
+  List<_SortOption> get _availableSortOptions => _isBuilderUser
+      ? _SortOption.values
+      : _SortOption.values
+            .where((opt) => opt != _SortOption.recommended)
+            .toList(growable: false);
+  bool get _isBuilderUser => _isBuilderLoggedIn || _isBuilderPropertiesView;
 
   List<PropertyModel> get _sorted {
     final list = List<PropertyModel>.from(_properties);
@@ -102,8 +113,14 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
     if (widget.initialFilter != null) {
       _currentFilter = PropertyFilter.from(widget.initialFilter!);
     }
+    _sortOption = _isBuilderUser
+        ? _SortOption.recommended
+        : _SortOption.priceLow;
     if (widget.initialSortIndex != null && widget.initialSortIndex! >= 0 && widget.initialSortIndex! < _SortOption.values.length) {
       _sortOption = _SortOption.values[widget.initialSortIndex!];
+    }
+    if (!_isBuilderUser && _sortOption == _SortOption.recommended) {
+      _sortOption = _SortOption.priceLow;
     }
     _loadProperties();
   }
@@ -234,7 +251,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
         offset.dx + box.size.width,
         0,
       ),
-      items: _SortOption.values.map((opt) {
+      items: _availableSortOptions.map((opt) {
         final isSelected = opt == _sortOption;
         return PopupMenuItem<_SortOption>(
           value: opt,
@@ -351,6 +368,12 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
     final String? furnishStr = p.furnishingStatus?.trim().isNotEmpty == true
         ? p.furnishingStatus!.trim()
         : null;
+    final String? availableForStr =
+        p.category == PropertyCategory.residential &&
+            p.listingType == ListingType.rent &&
+            p.availableFor?.trim().isNotEmpty == true
+        ? p.availableFor!.trim()
+        : null;
     final String? availStr = p.availability?.trim().isNotEmpty == true
         ? p.availability!.trim()
         : null;
@@ -399,6 +422,8 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
       if (floorStr != null) gChip(floorStr, Icons.layers_outlined),
       if (parkingStr != null) gChip(parkingStr, Icons.directions_car_outlined),
       if (furnishStr != null) gChip(furnishStr, Icons.chair_outlined),
+      if (availableForStr != null)
+        gChip(availableForStr, Icons.family_restroom_outlined),
     ];
 
     // ── 2-column chip grid aligned right ──────────────

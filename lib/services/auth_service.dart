@@ -43,12 +43,43 @@ class AuthService {
 
   static String? tempLoginError;
 
-  static Future<void> loginUser(String phone) async {
-    final token =
-        '${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
+  static Future<bool> loginWithGoogle(String email) async {
+    final token = '${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
+    try {
+      final user = await DatabaseService.instance.getUserByEmail(email);
+      if (user != null) {
+        final updatedUser = await DatabaseService.instance.upsertUser(phone: user.phone, sessionToken: token, email: email);
+        if (updatedUser != null) {
+          _currentUser = updatedUser;
+          if (updatedUser.name?.trim().isNotEmpty == true) {
+            await _p.setBool(_keyProfileComplete, true);
+          }
+          await _p.setBool(_keyIsLoggedIn, true);
+          await _p.setString(_keyUserPhone, updatedUser.phone);
+          await _p.setString(_keySessionToken, token);
+          debugPrint('[AUTH] loginWithGoogle OK - logged in existing user: $email');
+          return true;
+        }
+      }
+      return false; // Not registered yet
+    } catch (e, st) {
+      debugPrint('[AUTH] loginWithGoogle error: $e\n$st');
+      return false;
+    }
+  }
+
+  static Future<void> loginUser(String phone, {String? googleEmail}) async {
+    final token = '${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
 
     try {
-      final user = await DatabaseService.instance.upsertUser(phone, token);
+      if (googleEmail != null) {
+        final existingUser = await DatabaseService.instance.getUserByPhone(phone);
+        if (existingUser != null && existingUser.email != null && existingUser.email != googleEmail) {
+          throw Exception('This mobile number is linked to another Google account. Please use a different number or sign in with the correct Google account.');
+        }
+      }
+
+      final user = await DatabaseService.instance.upsertUser(phone: phone, sessionToken: token, email: googleEmail);
       if (user != null) {
         _currentUser = user;
         // Cache profile status locally
@@ -119,6 +150,7 @@ class AuthService {
 
   static bool get isLoggedIn => _p.getBool(_keyIsLoggedIn) ?? false;
   static String get userPhone => _p.getString(_keyUserPhone) ?? '';
+  static UserModel? get currentUser => _currentUser;
 
   static const Set<String> _adminPhoneLast10 = {
     '9356965876',
@@ -185,6 +217,18 @@ class AuthService {
     try {
       final user = await DatabaseService.instance.getUserByPhone(userPhone);
       if (user == null) return false;
+
+      final userType = (user.userType?.value ?? '').trim().toLowerCase();
+      if (userType == 'broker') {
+        // Brokers are free users now. Keep them active even if old billing logic disabled them.
+        if (!user.isActive) {
+          await DatabaseService.instance.activateUser(user.phone);
+          _currentUser = await DatabaseService.instance.getUserByPhone(userPhone);
+        } else {
+          _currentUser = user;
+        }
+        return true;
+      }
       
       // Check if user is blocked
       if (!user.isActive) {

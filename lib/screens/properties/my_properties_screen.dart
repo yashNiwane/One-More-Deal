@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/property_service.dart';
@@ -8,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'add_property_screen.dart';
 import 'add_builder_property_screen.dart';
 import 'edit_property_screen.dart';
+import '../subscription_screen.dart';
 
 class MyPropertiesScreen extends StatefulWidget {
   const MyPropertiesScreen({super.key});
@@ -17,6 +19,7 @@ class MyPropertiesScreen extends StatefulWidget {
 }
 
 class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
+  static const String _builderPlanPromptSeenKey = 'builder_plan_prompt_seen';
   bool _isLoading = true;
   List<PropertyModel> _properties = [];
   PropertyCategory? _selectedCategory;
@@ -279,6 +282,12 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     final String? furnishStr = p.furnishingStatus?.trim().isNotEmpty == true
         ? p.furnishingStatus!.trim()
         : null;
+    final String? availableForStr =
+        p.category == PropertyCategory.residential &&
+            p.listingType == ListingType.rent &&
+            p.availableFor?.trim().isNotEmpty == true
+        ? p.availableFor!.trim()
+        : null;
     final String? availStr = p.availability?.trim().isNotEmpty == true
         ? p.availability!.trim()
         : null;
@@ -323,6 +332,8 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       if (floorStr != null) gChip(floorStr, Icons.layers_outlined),
       if (parkingStr != null) gChip(parkingStr, Icons.directions_car_outlined),
       if (furnishStr != null) gChip(furnishStr, Icons.chair_outlined),
+      if (availableForStr != null)
+        gChip(availableForStr, Icons.family_restroom_outlined),
     ];
 
     Widget chipGrid() {
@@ -1094,6 +1105,12 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     final isBuilder =
         AuthService.userType == 'Builder' ||
         AuthService.userType == 'Developer';
+
+    if (isBuilder) {
+      final shouldContinue = await _handleFirstBuilderPostClick();
+      if (!shouldContinue || !mounted) return;
+    }
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -1103,6 +1120,61 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       ),
     );
     if (result == true) _loadProperties();
+  }
+
+  Future<bool> _handleFirstBuilderPostClick() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(_builderPlanPromptSeenKey) ?? false;
+    if (seen) return true;
+    if (!mounted) return false;
+
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Builder Payment Plans',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Choose a plan to start posting builder properties.',
+                style: GoogleFonts.inter(fontSize: 13)),
+            const SizedBox(height: 12),
+            Text('1 Month: ₹3000',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('3 Months: ₹6000',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'later'),
+            child: Text('Continue',
+                style: GoogleFonts.inter(color: AppColors.iosSystemBlue)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'pay'),
+            child: Text('Pay Now', style: GoogleFonts.inter()),
+          ),
+        ],
+      ),
+    );
+
+    await prefs.setBool(_builderPlanPromptSeenKey, true);
+    if (action == 'pay') {
+      if (!mounted) return false;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      );
+      return false;
+    }
+    return true;
   }
 
   Widget _buildFilterBar() {

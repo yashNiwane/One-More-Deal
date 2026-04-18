@@ -66,19 +66,20 @@ class DatabaseService {
   // ═══════════════════════════════════════════════════════════════════════
 
   /// First-time signup OR re-login: upserts the row and returns the full user.
-  Future<UserModel?> upsertUser(String phone, String sessionToken) async {
+  Future<UserModel?> upsertUser({required String phone, required String sessionToken, String? email}) async {
     final res = await (await _db).execute(
       Sql.named('''
-        INSERT INTO users (phone, last_login_at, current_session_token)
-        VALUES (@phone, NOW(), @token)
+        INSERT INTO users (phone, email, last_login_at, current_session_token)
+        VALUES (@phone, @email, NOW(), @token)
         ON CONFLICT (phone) DO UPDATE
-          SET last_login_at = NOW(),
+          SET email         = COALESCE(users.email, @email),
+              last_login_at = NOW(),
               current_session_token = @token,
               updated_at    = NOW()
-        RETURNING id, phone, name, user_type, city, company_name,
+        RETURNING id, phone, email, name, user_type, city, company_name,
                   is_active, trial_days, trial_ends_at, last_login_at, created_at, current_session_token, user_code, rera_no, area, office_address
       '''),
-      parameters: {'phone': phone, 'token': sessionToken},
+      parameters: {'phone': phone, 'email': email, 'token': sessionToken},
     );
     if (res.isEmpty) return null;
     return UserModel.fromMap(res.first.toColumnMap());
@@ -116,11 +117,25 @@ class DatabaseService {
   Future<UserModel?> getUserByPhone(String phone) async {
     final res = await (await _db).execute(
       Sql.named('''
-        SELECT id, phone, name, user_type, city, company_name,
+        SELECT id, phone, email, name, user_type, city, company_name,
                is_active, trial_days, trial_ends_at, last_login_at, created_at, current_session_token, user_code, rera_no, area, office_address
         FROM users WHERE phone = @phone LIMIT 1
       '''),
       parameters: {'phone': phone},
+    );
+    if (res.isEmpty) return null;
+    return UserModel.fromMap(res.first.toColumnMap());
+  }
+
+  /// Retrieves a user row by email.
+  Future<UserModel?> getUserByEmail(String email) async {
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT id, phone, email, name, user_type, city, company_name,
+               is_active, trial_days, trial_ends_at, last_login_at, created_at, current_session_token, user_code, rera_no, area, office_address
+        FROM users WHERE email = @email LIMIT 1
+      '''),
+      parameters: {'email': email},
     );
     if (res.isEmpty) return null;
     return UserModel.fromMap(res.first.toColumnMap());
@@ -623,14 +638,14 @@ class DatabaseService {
         INSERT INTO properties (
           user_id, category, listing_type, city, area, subarea, society_name,
           flat_type, area_value, built_up_area, carpet_area, area_unit, floor_number, floor_category,
-          price, deposit, availability, possession_date, parking, furnishing_status,
+          price, deposit, availability, possession_date, parking, furnishing_status, available_for,
           rera_no, total_buildings, amenities_count, building_structure, total_units, is_approved, variants,
           posted_at, refreshed_at, auto_delete_at
         ) VALUES (
           @userId, @category::property_category, @listingType::listing_type,
           @city, @area, @subarea, @societyName,
           @flatType, @areaValue, @builtUpArea, @carpetArea, @areaUnit, @floorNumber, @floorCategory::floor_category,
-          @price, @deposit, @availability, @possessionDate, @parking, @furnishingStatus,
+          @price, @deposit, @availability, @possessionDate, @parking, @furnishingStatus, @availableFor,
           @reraNo, @totalBuildings, @amenitiesCount, @buildingStructure, @totalUnits, @isApproved, @variants::jsonb,
           NOW(), NOW(), NOW() + (@deleteDays * INTERVAL '1 day')
         )
@@ -657,6 +672,7 @@ class DatabaseService {
         'possessionDate': p.possessionDate?.toIso8601String().substring(0, 10),
         'parking': p.parking,
         'furnishingStatus': p.furnishingStatus,
+        'availableFor': p.availableFor,
         'reraNo': p.reraNo,
         'totalBuildings': p.totalBuildings,
         'amenitiesCount': p.amenitiesCount,
@@ -708,7 +724,8 @@ class DatabaseService {
           availability    = @availability,
           possession_date = @possessionDate,
           parking         = @parking,
-          furnishing_status = @furnishingStatus
+          furnishing_status = @furnishingStatus,
+          available_for   = @availableFor
         WHERE id = @id AND user_id = @userId
       '''),
       parameters: {
@@ -729,6 +746,7 @@ class DatabaseService {
         'possessionDate': p.possessionDate?.toIso8601String().substring(0, 10),
         'parking': p.parking,
         'furnishingStatus': p.furnishingStatus,
+        'availableFor': p.availableFor,
       },
     );
   }
@@ -795,7 +813,7 @@ class DatabaseService {
       'p.is_visible = true',
       'p.auto_delete_at > NOW()',
       'u.is_active = true',
-      '(u.trial_ends_at > NOW() OR EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.is_active = true AND s.ends_at > NOW()))',
+      "(u.user_type = 'Broker' OR u.trial_ends_at > NOW() OR EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.is_active = true AND s.ends_at > NOW()))",
       '(p.is_deleted = false OR p.is_deleted IS NULL)',
       '(p.is_approved = true)',
     ];
@@ -838,6 +856,10 @@ class DatabaseService {
         conditions.add('p.furnishing_status = @furnishingStatus');
         params['furnishingStatus'] = filter.furnishingStatus;
       }
+      if (filter.availableFor != null) {
+        conditions.add('p.available_for = @availableFor');
+        params['availableFor'] = filter.availableFor;
+      }
       if (filter.userTypeFilter != null) {
         if (filter.userTypeFilter == UserTypeFilter.builder) {
           conditions.add(
@@ -868,6 +890,7 @@ class DatabaseService {
            LOWER(p.category::text) LIKE LOWER(@searchQuery) OR
            LOWER(p.listing_type::text) LIKE LOWER(@searchQuery) OR
            LOWER(p.furnishing_status) LIKE LOWER(@searchQuery) OR
+           LOWER(p.available_for) LIKE LOWER(@searchQuery) OR
            LOWER(p.availability) LIKE LOWER(@searchQuery) OR
            LOWER(p.parking) LIKE LOWER(@searchQuery) OR
            LOWER(u.user_type) LIKE LOWER(@searchQuery) OR

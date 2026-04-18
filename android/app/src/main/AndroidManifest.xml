@@ -42,5 +42,13 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Required for Google Sign-In on Android 11+ (API 30+) -->
+        <package android:name="com.google.android.gms" />
+        <package android:name="com.google.android.gsf" />
+        <!-- Required for Google account chooser on physical devices -->
+        <package android:name="com.google.android.googlequicksearchbox" />
+        <intent>
+            <action android:name="com.google.android.gms.auth.api.signin.action.UPDATE_CONSENT" />
+        </intent>
     </queries>
 </manifest>

@@ -10,6 +10,7 @@ import '../../services/firebase_auth_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/gradient_button.dart';
 import '../splash_screen.dart';
+import 'profile_setup_screen.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
   const PhoneAuthScreen({super.key});
@@ -50,20 +51,49 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       _errorText = null;
     });
 
-    final user = await FirebaseAuthService.signInWithGoogle();
+    try {
+      final user = await FirebaseAuthService.signInWithGoogle();
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (user != null) {
+      if (user != null) {
+        if (user.email != null) {
+          final isExistingUser = await AuthService.loginWithGoogle(user.email!);
+          if (isExistingUser) {
+            if (!mounted) return;
+            Navigator.of(context).pushAndRemoveUntil(
+              PageRouteBuilder(
+                pageBuilder: (_, animation, __) => const SplashScreen(),
+                transitionDuration: const Duration(milliseconds: 400),
+                transitionsBuilder: (_, animation, __, child) =>
+                    FadeTransition(opacity: animation, child: child),
+              ),
+              (route) => false,
+            );
+            return;
+          }
+        }
+        
+        setState(() {
+          _googleSignedIn = true;
+          _googleUser = user;
+        });
+        _phoneFocus.requestFocus();
+      } else {
+        // user cancelled the Google account picker
+        setState(() => _errorText = null);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString();
+      debugPrint('[PhoneAuthScreen] Google Sign-In error: $msg');
       setState(() {
-        _googleSignedIn = true;
-        _googleUser = user;
+        _isLoading = false;
+        // Show a friendly message but include the raw error for debugging
+        _errorText =
+            'Google Sign-In failed. Make sure Google Play Services is updated and try again.\n\nDetails: $msg';
       });
-      _phoneFocus.requestFocus();
-    } else {
-      setState(() => _errorText =
-          'Google Sign-In failed. Make sure Google Play Services is updated and try again.');
       HapticFeedback.vibrate();
     }
   }
@@ -81,18 +111,20 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     final phone = _phoneController.text.trim();
 
     try {
-      // AuthService.loginUser uses upsertUser internally:
-      // - New user  → INSERT row into PostgreSQL users table
-      // - Old user  → UPDATE last_login_at in PostgreSQL users table
-      // Either way the user ends up logged in with full session
-      await AuthService.loginUser(phone);
+      // AuthService.loginUser links the Google email if provided.
+      await AuthService.loginUser(phone, googleEmail: _googleUser?.email);
 
       if (!mounted) return;
 
-      // Navigate to SplashScreen which re-evaluates auth and routes to home
+      // New users go directly to profile setup (name, type, city, company).
+      // Returning users (who somehow end up here) go to SplashScreen.
+      final user = AuthService.currentUser;
+      final isNewUser = user?.profileDone != true;
+
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, animation, __) => const SplashScreen(),
+          pageBuilder: (_, animation, __) =>
+              isNewUser ? const ProfileSetupScreen() : const SplashScreen(),
           transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (_, animation, __, child) =>
               FadeTransition(opacity: animation, child: child),
