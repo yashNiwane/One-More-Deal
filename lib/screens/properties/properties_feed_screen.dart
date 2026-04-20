@@ -28,12 +28,11 @@ class PropertiesFeedScreen extends StatefulWidget {
 }
 
 enum _SortOption {
-  recommended('Recommended'),
-  newest('Newest First'),
-  oldest('Oldest First'),
   priceLow('Price: Low to High'),
   priceHigh('Price: High to Low'),
-  area('Area: Largest First');
+  newest('New first'),
+  oldest('Old first'),
+  area('Area: Largest first');
 
   const _SortOption(this.label);
   final String label;
@@ -46,6 +45,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
   _SortOption _sortOption = _SortOption.priceLow;
   final GlobalKey _sortIconKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
+
   final Map<int, GlobalKey> _propertyCardKeys = {};
   int? _highlightedPropertyId;
   bool _didFocusInitialProperty = false;
@@ -54,28 +54,11 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
       AuthService.userType == 'Builder' || AuthService.userType == 'Developer';
   bool get _isBuilderPropertiesView =>
       _currentFilter.userTypeFilter == UserTypeFilter.builder;
-  List<_SortOption> get _availableSortOptions => _isBuilderUser
-      ? _SortOption.values
-      : _SortOption.values
-            .where((opt) => opt != _SortOption.recommended)
-            .toList(growable: false);
+  List<_SortOption> get _availableSortOptions => _SortOption.values;
   bool get _isBuilderUser => _isBuilderLoggedIn || _isBuilderPropertiesView;
-
   List<PropertyModel> get _sorted {
     final list = List<PropertyModel>.from(_properties);
     switch (_sortOption) {
-      case _SortOption.recommended:
-        final now = DateTime.now();
-        // Refreshes every 10 minutes
-        final seed = (now.year * 1000000) + (now.month * 10000) + (now.day * 100) + (now.hour * 6) + (now.minute ~/ 10);
-        list.sort((a, b) {
-          final hashA = (a.id ?? 0) ^ seed;
-          final hashB = (b.id ?? 0) ^ seed;
-          // Simple fast hash to spread values evenly
-          final scoreA = (hashA * 2654435761) % 4294967296;
-          final scoreB = (hashB * 2654435761) % 4294967296;
-          return scoreA.compareTo(scoreB);
-        });
       case _SortOption.newest:
         list.sort(
           (a, b) => (b.refreshedAt ?? b.postedAt ?? DateTime(0)).compareTo(
@@ -113,15 +96,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
     if (widget.initialFilter != null) {
       _currentFilter = PropertyFilter.from(widget.initialFilter!);
     }
-    _sortOption = _isBuilderUser
-        ? _SortOption.recommended
-        : _SortOption.priceLow;
-    if (widget.initialSortIndex != null && widget.initialSortIndex! >= 0 && widget.initialSortIndex! < _SortOption.values.length) {
-      _sortOption = _SortOption.values[widget.initialSortIndex!];
-    }
-    if (!_isBuilderUser && _sortOption == _SortOption.recommended) {
-      _sortOption = _SortOption.priceLow;
-    }
+    _sortOption = _SortOption.priceLow;
     _loadProperties();
   }
 

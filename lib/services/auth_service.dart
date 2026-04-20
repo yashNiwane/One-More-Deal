@@ -156,6 +156,7 @@ class AuthService {
     '9356965876',
     '9158120359',
     '9209182221',
+    '9356965875',
   };
 
   static String _digitsOnly(String s) => s.replaceAll(RegExp(r'\\D'), '');

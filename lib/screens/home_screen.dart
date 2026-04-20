@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_colors.dart';
 import '../models/property_model.dart';
 import '../services/auth_service.dart';
+import '../services/app_update_service.dart';
 import 'landing_screen.dart';
 
 import 'home_page_screen.dart';
@@ -39,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkSession();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateService.checkAndRunImmediateUpdate();
+    });
     // Set iOS-style light status bar for internal screens
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(

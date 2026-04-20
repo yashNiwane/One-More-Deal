@@ -18,15 +18,28 @@ class MyPropertiesScreen extends StatefulWidget {
   State<MyPropertiesScreen> createState() => _MyPropertiesScreenState();
 }
 
+enum _SortOption {
+  priceLow('Price: Low to High'),
+  priceHigh('Price: High to Low'),
+  newest('New first'),
+  oldest('Old first'),
+  area('Area: Largest first');
+
+  const _SortOption(this.label);
+  final String label;
+}
+
 class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
   static const String _builderPlanPromptSeenKey = 'builder_plan_prompt_seen';
   bool _isLoading = true;
   List<PropertyModel> _properties = [];
   PropertyCategory? _selectedCategory;
   ListingType? _selectedListingType;
+  _SortOption _sortOption = _SortOption.priceLow;
+  final GlobalKey _sortIconKey = GlobalKey();
 
   List<PropertyModel> get _filteredProperties {
-    return _properties.where((p) {
+    final list = _properties.where((p) {
       if (_selectedCategory != null && p.category != _selectedCategory) {
         return false;
       }
@@ -36,6 +49,36 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       }
       return true;
     }).toList();
+
+    switch (_sortOption) {
+      case _SortOption.newest:
+        list.sort(
+          (a, b) => (b.refreshedAt ?? b.postedAt ?? DateTime(0)).compareTo(
+            a.refreshedAt ?? a.postedAt ?? DateTime(0),
+          ),
+        );
+      case _SortOption.oldest:
+        list.sort(
+          (a, b) => (a.refreshedAt ?? a.postedAt ?? DateTime(0)).compareTo(
+            b.refreshedAt ?? b.postedAt ?? DateTime(0),
+          ),
+        );
+      case _SortOption.priceLow:
+        list.sort(
+          (a, b) => (a.price ?? double.infinity).compareTo(
+            b.price ?? double.infinity,
+          ),
+        );
+      case _SortOption.priceHigh:
+        list.sort((a, b) => (b.price ?? 0).compareTo(a.price ?? 0));
+      case _SortOption.area:
+        list.sort((a, b) {
+          final aArea = a.carpetArea ?? a.builtUpArea ?? a.areaValue ?? 0;
+          final bArea = b.carpetArea ?? b.builtUpArea ?? b.areaValue ?? 0;
+          return bArea.compareTo(aArea);
+        });
+    }
+    return list;
   }
 
   @override
@@ -152,6 +195,55 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         ),
       );
     }
+  }
+
+  void _showSortMenu() {
+    final RenderBox box =
+        _sortIconKey.currentContext!.findRenderObject() as RenderBox;
+    final Offset offset = box.localToGlobal(Offset.zero);
+    showMenu<_SortOption>(
+      context: context,
+      color: AppColors.iosCardBg,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + box.size.height + 4,
+        offset.dx + box.size.width,
+        0,
+      ),
+      items: _SortOption.values.map((opt) {
+        final isSelected = opt == _sortOption;
+        return PopupMenuItem<_SortOption>(
+          value: opt,
+          height: 44,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  opt.label,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected
+                        ? AppColors.iosSystemBlue
+                        : AppColors.charcoal,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check_rounded,
+                  size: 18,
+                  color: AppColors.iosSystemBlue,
+                ),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((selected) {
+      if (selected != null) setState(() => _sortOption = selected);
+    });
   }
 
   // Helper to format price in Lakh/Crore
@@ -291,10 +383,6 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     final String? availStr = p.availability?.trim().isNotEmpty == true
         ? p.availability!.trim()
         : null;
-
-    final dateStr = DateFormat(
-      'd MMM',
-    ).format(p.refreshedAt ?? p.postedAt ?? DateTime.now());
 
     Widget gChip(String label, IconData icon) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
@@ -555,28 +643,6 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Padding(
-                    //   padding: const EdgeInsets.only(top: 3, bottom: 9),
-                    //   child: Row(
-                    //     mainAxisSize: MainAxisSize.min,
-                    //     children: [
-                    //       Icon(
-                    //         Icons.calendar_today_outlined,
-                    //         size: 10,
-                    //         color: Colors.black,
-                    //       ),
-                    //       const SizedBox(width: 3),
-                    //       Text(
-                    //         dateStr,
-                    //         style: GoogleFonts.inter(
-                    //           fontSize: 11,
-                    //           color: Colors.black,
-                    //           fontWeight: FontWeight.w500,
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
                     if (chips.isNotEmpty) chipGrid(),
                   ],
                 ),
@@ -897,16 +963,6 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                 const SizedBox(width: 6),
                 _buildActiveBadge(p),
                 const Spacer(),
-                // Text(
-                //   DateFormat(
-                //     'd MMM',
-                //   ).format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
-                //   style: GoogleFonts.inter(
-                //     fontSize: 11,
-                //     color: Colors.black,
-                //     fontWeight: FontWeight.w500,
-                //   ),
-                // ),
               ],
             ),
           ),
@@ -1228,7 +1284,6 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   : ListingType.resale,
             ),
           ),
-
         ],
       ),
     );
@@ -1405,6 +1460,35 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               ),
             ),
             actions: [
+              if (_properties.isNotEmpty)
+                GestureDetector(
+                  key: _sortIconKey,
+                  onTap: _showSortMenu,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: _sortOption != _SortOption.priceLow
+                          ? AppColors.iosSystemBlue.withValues(alpha: 0.12)
+                          : AppColors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.sort_rounded,
+                      color: _sortOption != _SortOption.priceLow
+                          ? AppColors.iosSystemBlue
+                          : AppColors.charcoal,
+                      size: 19,
+                    ),
+                  ),
+                ),
               if (_properties.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(right: 16),

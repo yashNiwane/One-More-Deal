@@ -642,9 +642,9 @@ class DatabaseService {
           rera_no, total_buildings, amenities_count, building_structure, total_units, is_approved, variants,
           posted_at, refreshed_at, auto_delete_at
         ) VALUES (
-          @userId, @category::property_category, @listingType::listing_type,
+          @userId, @category, @listingType,
           @city, @area, @subarea, @societyName,
-          @flatType, @areaValue, @builtUpArea, @carpetArea, @areaUnit, @floorNumber, @floorCategory::floor_category,
+          @flatType, @areaValue, @builtUpArea, @carpetArea, @areaUnit, @floorNumber, @floorCategory,
           @price, @deposit, @availability, @possessionDate, @parking, @furnishingStatus, @availableFor,
           @reraNo, @totalBuildings, @amenitiesCount, @buildingStructure, @totalUnits, @isApproved, @variants::jsonb,
           NOW(), NOW(), NOW() + (@deleteDays * INTERVAL '1 day')
@@ -718,7 +718,7 @@ class DatabaseService {
           built_up_area   = @builtUpArea,
           carpet_area     = @carpetArea,
           floor_number    = @floorNumber,
-          floor_category  = @floorCategory::floor_category,
+          floor_category  = @floorCategory,
           price           = @price,
           deposit         = @deposit,
           availability    = @availability,
@@ -813,7 +813,7 @@ class DatabaseService {
       'p.is_visible = true',
       'p.auto_delete_at > NOW()',
       'u.is_active = true',
-      "(u.user_type = 'Broker' OR u.trial_ends_at > NOW() OR EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.is_active = true AND s.ends_at > NOW()))",
+      "(u.user_type IN ('Builder', 'Developer') OR u.user_type = 'Broker' OR u.trial_ends_at > NOW() OR EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.is_active = true AND s.ends_at > NOW()))",
       '(p.is_deleted = false OR p.is_deleted IS NULL)',
       '(p.is_approved = true)',
     ];
@@ -833,15 +833,15 @@ class DatabaseService {
         params['society'] = '%${filter.society}%';
       }
       if (filter.category != null) {
-        conditions.add("p.category = @category::property_category");
+        conditions.add("p.category = @category");
         params['category'] = filter.category!.value;
       }
       if (filter.listingType != null) {
-        conditions.add("p.listing_type = @listingType::listing_type");
+        conditions.add("p.listing_type = @listingType");
         params['listingType'] = filter.listingType!.value;
       }
       if (filter.floorCategory != null) {
-        conditions.add("p.floor_category = @floorCat::floor_category");
+        conditions.add("p.floor_category = @floorCat");
         params['floorCat'] = filter.floorCategory!.value;
       }
       if (filter.flatType != null) {
@@ -1050,7 +1050,7 @@ class DatabaseService {
     final builderProjects = await count('''
       SELECT COUNT(*)
       FROM properties
-      WHERE category = 'New'::property_category
+      WHERE category = 'New'
         AND (is_deleted = false OR is_deleted IS NULL)
     ''');
 
@@ -1168,6 +1168,7 @@ class DatabaseService {
           COALESCE(NULLIF(TRIM(u.company_name), ''), NULLIF(TRIM(u.name), ''), 'Unknown') AS name,
           u.phone,
           u.user_type,
+          u.created_at AS registered_at,
           COALESCE(listings.total, 0) AS current_adds,
           ent.valid_till,
           GREATEST(
@@ -1211,6 +1212,7 @@ class DatabaseService {
             'name': m['name'] ?? 'Unknown',
             'phone': m['phone'] ?? '',
             'userType': m['user_type'] ?? '',
+            'registeredAt': m['registered_at'] as DateTime?,
             'currentAdds': (m['current_adds'] as int?) ?? 0,
             'validTill': m['valid_till'] as DateTime?,
             'daysLeft': (m['days_left'] as int?) ?? 0,
@@ -1230,6 +1232,7 @@ class DatabaseService {
           s.id,
           COALESCE(NULLIF(TRIM(u.company_name), ''), NULLIF(TRIM(u.name), ''), 'Unknown') AS name,
           u.phone,
+          u.created_at AS registered_at,
           s.payment_ref,
           s.amount_paid,
           s.created_at AS payment_date,
@@ -1255,6 +1258,7 @@ class DatabaseService {
             'id': m['id'],
             'name': m['name'] ?? 'Unknown',
             'phone': m['phone'] ?? '',
+            'registeredAt': m['registered_at'] as DateTime?,
             'paymentRef': m['payment_ref'] ?? '',
             'amount': double.tryParse(m['amount_paid']?.toString() ?? '') ?? 0,
             'paymentDate': m['payment_date'] as DateTime?,
@@ -1375,5 +1379,41 @@ class DatabaseService {
       ),
       parameters: {'id': propertyId},
     );
+  }
+
+  /// Fetches all registered users (Brokers, Builders, Developers) for the admin dashboard.
+  Future<List<Map<String, dynamic>>> fetchAllRegisteredUsers({
+    int limit = 1000,
+  }) async {
+    final res = await (await _db).execute(
+      Sql.named('''
+        SELECT
+          u.id,
+          COALESCE(NULLIF(TRIM(u.company_name), ''), NULLIF(TRIM(u.name), ''), 'Unknown') AS name,
+          u.phone,
+          u.user_type,
+          u.user_code,
+          u.created_at AS registered_at
+        FROM users u
+        WHERE u.user_type IN ('Broker', 'Builder', 'Developer')
+        ORDER BY u.created_at DESC
+        LIMIT @limit
+      '''),
+      parameters: {'limit': limit},
+    );
+
+    return res
+        .map((r) {
+          final m = r.toColumnMap();
+          return {
+            'id': m['id'],
+            'name': m['name'] ?? 'Unknown',
+            'phone': m['phone'] ?? '',
+            'userType': m['user_type'] ?? '',
+            'userCode': m['user_code'] ?? '-',
+            'registeredAt': m['registered_at'] as DateTime?,
+          };
+        })
+        .toList(growable: false);
   }
 }

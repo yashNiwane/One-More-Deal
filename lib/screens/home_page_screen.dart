@@ -685,7 +685,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
       children: [
         Expanded(
           child: Text(
-            'One More Deal connects Brokers to Brokers and Builders with clarity.',
+            'One More Deal Connects Brokers to Brokers and Builders with Clarity.',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -773,11 +773,8 @@ class _HomePageScreenState extends State<HomePageScreen> {
           iconColor: AppColors.success,
           isFullWidth: true,
           onTap: () {
-            final filter = PropertyFilter(city: _selectedCity)
+            final filter = PropertyFilter()
               ..userTypeFilter = UserTypeFilter.builder;
-            if (_selectedArea != null && _selectedArea!.trim().isNotEmpty) {
-              filter.area = _selectedArea!.trim();
-            }
             widget.onOpenDiscoverWithFilter?.call(filter);
           },
         ),

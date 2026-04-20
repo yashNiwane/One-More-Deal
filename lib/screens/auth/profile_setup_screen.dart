@@ -385,7 +385,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       const SizedBox(height: 24),
                       FadeInUp(
                         duration: const Duration(milliseconds: 650),
-                        child: const _Label('RERA Number'),
+                        child: const _Label('RERA Number (Optional)'),
                       ),
                       const SizedBox(height: 8),
                       FadeInUp(
@@ -409,9 +409,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               color: AppColors.primaryLight,
                             ),
                           ),
-                          validator: (v) => _validateEnglish(
-                            v,
-                            fieldName: 'your RERA Number',
+                          validator: (v) => _validateEnglish(
+                            v,
+                            fieldName: 'your RERA Number',
+                            requiredField: false,
                           ),
                         ),
                       ),
