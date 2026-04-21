@@ -487,6 +487,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                       : [
                           PropertyCategory.residential,
                           PropertyCategory.commercial,
+                          PropertyCategory.plot,
                         ],
                   (c) => c.value,
                   isBuilder
@@ -495,8 +496,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                           if (val != null) {
                             setState(() {
                               _category = val;
-                              if (val != PropertyCategory.commercial &&
-                                  _listingType == ListingType.plot) {
+                              // Auto-set listing type when Plot is selected
+                              if (val == PropertyCategory.plot) {
+                                _listingType = ListingType.plot;
+                              } else if (_listingType == ListingType.plot) {
                                 _listingType = ListingType.resale;
                               }
                               if (_listingType == ListingType.newLaunch &&
@@ -507,7 +510,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                           }
                         },
                 ),
-                if (!isBuilder)
+                // Only show Listing Type dropdown for non-plot, non-builder
+                if (!isBuilder && _category != PropertyCategory.plot)
                   _buildDropdownField<ListingType>(
                     'Listing Type',
                     _listingType,
@@ -515,7 +519,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         ? [
                             ListingType.resale,
                             ListingType.rent,
-                            ListingType.plot,
                           ]
                         : [ListingType.resale, ListingType.rent],
                     (t) => t.value,

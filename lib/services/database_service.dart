@@ -833,8 +833,15 @@ class DatabaseService {
         params['society'] = '%${filter.society}%';
       }
       if (filter.category != null) {
-        conditions.add("p.category = @category");
-        params['category'] = filter.category!.value;
+        if (filter.category == PropertyCategory.plot) {
+          // Catch both new records (category='Plot') AND legacy records
+          // that were saved as category='Commercial' + listing_type='Plot'
+          conditions.add("(p.category = 'Plot' OR p.listing_type = 'Plot')");
+        } else {
+          // For non-plot categories, exclude any plot listing_type
+          conditions.add("p.category = @category AND p.listing_type != 'Plot'");
+          params['category'] = filter.category!.value;
+        }
       }
       if (filter.listingType != null) {
         conditions.add("p.listing_type = @listingType");

@@ -397,7 +397,7 @@ class PropertyFilter {
 
   bool get isEmpty => city == null && area == null && society == null &&
       category == null && listingType == null && floorCategory == null &&
-      flatType == null && furnishingStatus == null && userTypeFilter == null &&
+      flatType == null && parking == null && furnishingStatus == null && userTypeFilter == null &&
       availableFor == null &&
       maxPrice == null && minPrice == null && (searchQuery == null || searchQuery!.trim().isEmpty) && 
       (brokerIds == null || brokerIds!.isEmpty);

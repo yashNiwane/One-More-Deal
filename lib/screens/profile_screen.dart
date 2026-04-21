@@ -504,7 +504,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppColors.iosSeparator.withValues(alpha: 0.3),
                     margin: const EdgeInsets.only(left: 16),
                   ),
-                  _buildFormField('RERA No', _reraCtrl, isOptional: true),
+                  _buildFormField('A5210000000000', _reraCtrl, isOptional: true),
                 ],
                 Container(
                   height: 0.5,

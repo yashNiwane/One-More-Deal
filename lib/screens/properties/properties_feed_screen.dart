@@ -1521,13 +1521,16 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                 final cardKey = prop.id != null
                     ? (_propertyCardKeys[prop.id!] ??= GlobalKey())
                     : GlobalKey();
-                // Show builder card for new launch properties OR properties with category newProperty
-                final isBuilder =
-                    prop.listingType == ListingType.newLaunch ||
+                // Builder card only for genuine new-launch builder properties:
+                // BOTH listingType==newLaunch AND category==newProperty must be true.
+                // Using OR was causing resale/rent properties (with stale category data)
+                // to incorrectly render with the builder card style.
+                final isBuilderCard =
+                    prop.listingType == ListingType.newLaunch &&
                     prop.category == PropertyCategory.newProperty;
                 return KeyedSubtree(
                   key: cardKey,
-                  child: isBuilder
+                  child: isBuilderCard
                       ? _buildBuilderCard(prop)
                       : _buildPropertyCard(prop),
                 );
