@@ -25,3 +25,4 @@ area_unit | character varying
 availability | character varying
 parking | character varying
 subarea | text
+available_for | text

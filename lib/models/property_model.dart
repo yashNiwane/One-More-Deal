@@ -33,6 +33,7 @@ class PropertyModel {
   final DateTime? possessionDate; // Builder new property
   final String? parking;
   final String? furnishingStatus; // Full / Semi / Unfurnished
+  final String? availableFor; // Family / Bachelor / Any (Residential Rent)
 
   // Builder-specific fields
   final String? reraNo;
@@ -80,6 +81,7 @@ class PropertyModel {
     this.possessionDate,
     this.parking,
     this.furnishingStatus,
+    this.availableFor,
     this.reraNo,
     this.totalBuildings,
     this.amenitiesCount,
@@ -176,6 +178,7 @@ class PropertyModel {
         possessionDate:  m['possession_date'] as DateTime?,
         parking:         m['parking'] as String?,
         furnishingStatus:m['furnishing_status'] as String?,
+        availableFor:    m['available_for'] as String?,
         reraNo:          m['rera_no'] as String?,
         totalBuildings:  m['total_buildings'] as int?,
         amenitiesCount:  m['amenities_count'] as int?,
@@ -215,6 +218,7 @@ class PropertyModel {
         'possession_date': possessionDate?.toIso8601String().substring(0, 10),
         'parking':         parking,
         'furnishing_status': furnishingStatus,
+        'available_for':  availableFor,
         'rera_no':         reraNo,
         'total_buildings': totalBuildings,
         'amenities_count': amenitiesCount,
@@ -237,6 +241,7 @@ class PropertyModel {
     String? area,
     String? subarea,
     String? furnishingStatus,
+    String? availableFor,
     bool? isVisible,
     bool? isApproved,
     String? reraNo,
@@ -268,6 +273,7 @@ class PropertyModel {
         possessionDate:  possessionDate,
         parking:         parking ?? this.parking,
         furnishingStatus:furnishingStatus ?? this.furnishingStatus,
+        availableFor:    availableFor ?? this.availableFor,
         reraNo:          reraNo ?? this.reraNo,
         totalBuildings:  totalBuildings ?? this.totalBuildings,
         amenitiesCount:  amenitiesCount ?? this.amenitiesCount,
@@ -347,6 +353,7 @@ class PropertyFilter {
   String? flatType;          // BHK
   String? parking;           // Open, Covered, Not available
   String? furnishingStatus;  // Full, Semi, Unfurnished
+  String? availableFor;      // Family, Bachelor, Any
   UserTypeFilter? userTypeFilter; // Broker | Builder
   double? maxPrice;
   double? minPrice;
@@ -363,6 +370,7 @@ class PropertyFilter {
     this.flatType,
     this.parking,
     this.furnishingStatus,
+    this.availableFor,
     this.userTypeFilter,
     this.maxPrice,
     this.minPrice,
@@ -380,6 +388,7 @@ class PropertyFilter {
         flatType = other.flatType,
         parking = other.parking,
         furnishingStatus = other.furnishingStatus,
+        availableFor = other.availableFor,
         userTypeFilter = other.userTypeFilter,
         maxPrice = other.maxPrice,
         minPrice = other.minPrice,
@@ -388,7 +397,8 @@ class PropertyFilter {
 
   bool get isEmpty => city == null && area == null && society == null &&
       category == null && listingType == null && floorCategory == null &&
-      flatType == null && furnishingStatus == null && userTypeFilter == null &&
+      flatType == null && parking == null && furnishingStatus == null && userTypeFilter == null &&
+      availableFor == null &&
       maxPrice == null && minPrice == null && (searchQuery == null || searchQuery!.trim().isEmpty) && 
       (brokerIds == null || brokerIds!.isEmpty);
 }

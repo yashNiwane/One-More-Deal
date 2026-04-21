@@ -38,6 +38,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   int? _selectedFloor;
   String _selectedParking = 'Not available';
   String _selectedFurnishing = 'Unfurnished';
+  String _selectedAvailableFor = 'Any';
   DateTime? _possessionDate;
   static final RegExp _englishAsciiRegex = RegExp(r'^[\x00-\x7F]+$');
 
@@ -58,6 +59,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       _category == PropertyCategory.newProperty ||
       _listingType == ListingType.newLaunch;
   bool get _isRent => _listingType == ListingType.rent;
+  bool get _showAvailableFor =>
+      _category == PropertyCategory.residential && _isRent;
   bool get _isBuilderUser =>
       AuthService.userType == 'Builder' || AuthService.userType == 'Developer';
 
@@ -118,6 +121,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         possessionDate: _isNew ? _possessionDate : null,
         parking: _isPlot || _isNew ? null : _selectedParking,
         furnishingStatus: _isPlot || _isNew ? null : _selectedFurnishing,
+        availableFor: _showAvailableFor ? _selectedAvailableFor : null,
       );
 
       final result = await PropertyService.addProperty(
@@ -483,6 +487,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                       : [
                           PropertyCategory.residential,
                           PropertyCategory.commercial,
+                          PropertyCategory.plot,
                         ],
                   (c) => c.value,
                   isBuilder
@@ -491,8 +496,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                           if (val != null) {
                             setState(() {
                               _category = val;
-                              if (val != PropertyCategory.commercial &&
-                                  _listingType == ListingType.plot) {
+                              // Auto-set listing type when Plot is selected
+                              if (val == PropertyCategory.plot) {
+                                _listingType = ListingType.plot;
+                              } else if (_listingType == ListingType.plot) {
                                 _listingType = ListingType.resale;
                               }
                               if (_listingType == ListingType.newLaunch &&
@@ -503,7 +510,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                           }
                         },
                 ),
-                if (!isBuilder)
+                // Only show Listing Type dropdown for non-plot, non-builder
+                if (!isBuilder && _category != PropertyCategory.plot)
                   _buildDropdownField<ListingType>(
                     'Listing Type',
                     _listingType,
@@ -511,7 +519,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         ? [
                             ListingType.resale,
                             ListingType.rent,
-                            ListingType.plot,
                           ]
                         : [ListingType.resale, ListingType.rent],
                     (t) => t.value,
@@ -750,6 +757,18 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                       (val) {
                         if (val != null)
                           setState(() => _selectedFurnishing = val);
+                      },
+                    ),
+                  if (_showAvailableFor)
+                    _buildDropdownField<String>(
+                      'Available For',
+                      _selectedAvailableFor,
+                      const ['Family', 'Bachelor', 'Any'],
+                      (v) => v,
+                      (val) {
+                        if (val != null) {
+                          setState(() => _selectedAvailableFor = val);
+                        }
                       },
                     ),
                 ]),

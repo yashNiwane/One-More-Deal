@@ -25,9 +25,12 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
   DateTime? _availabilityDate;
   String _selectedParking = 'Not available';
   String _selectedFurnishing = 'Unfurnished';
+  String _selectedAvailableFor = 'Any';
 
   bool get _isNew => widget.property.category == PropertyCategory.newProperty || widget.property.listingType == ListingType.newLaunch;
   bool get _isRent => widget.property.listingType == ListingType.rent;
+  bool get _showAvailableFor =>
+      widget.property.category == PropertyCategory.residential && _isRent;
 
   @override
   void initState() {
@@ -37,6 +40,7 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
     _subareaCtrl = TextEditingController(text: widget.property.subarea ?? '');
     _selectedParking = widget.property.parking ?? 'Not available';
     _selectedFurnishing = widget.property.furnishingStatus ?? 'Unfurnished';
+    _selectedAvailableFor = widget.property.availableFor ?? 'Any';
     
     if (widget.property.builtUpArea != null) {
       _selectedAreaType = 'Built-up Area';
@@ -86,6 +90,7 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
         possessionDate: widget.property.possessionDate,
         parking: widget.property.category == PropertyCategory.newProperty ? null : _selectedParking,
         furnishingStatus: widget.property.category == PropertyCategory.newProperty ? null : _selectedFurnishing,
+        availableFor: _showAvailableFor ? _selectedAvailableFor : null,
         isVisible: widget.property.isVisible,
         postedAt: widget.property.postedAt,
         refreshedAt: widget.property.refreshedAt,
@@ -290,6 +295,23 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
                         onChanged: (val) { if (val != null) setState(() => _selectedFurnishing = val); },
                       ),
                     ),
+                    if (_showAvailableFor)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedAvailableFor,
+                          style: GoogleFonts.inter(fontSize: 15, color: AppColors.charcoal),
+                          decoration: InputDecoration(
+                            labelText: 'Available For',
+                            labelStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.iosSecondaryLabel),
+                            filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none,
+                          ),
+                          items: const ['Family', 'Bachelor', 'Any']
+                              .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                              .toList(),
+                          onChanged: (val) { if (val != null) setState(() => _selectedAvailableFor = val); },
+                        ),
+                      ),
                   ],
                 ]),
               ],

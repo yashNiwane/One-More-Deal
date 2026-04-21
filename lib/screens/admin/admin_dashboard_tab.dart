@@ -8,8 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../core/app_colors.dart';
-import '../../services/database_service.dart';
+import 'package:one_more_deal/core/app_colors.dart';
+import 'package:one_more_deal/services/database_service.dart';
 
 class AdminDashboardTab extends StatefulWidget {
   const AdminDashboardTab({super.key});
@@ -51,6 +51,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   bool _payment7SortAscending = true;
   int? _payment30SortColumnIndex;
   bool _payment30SortAscending = true;
+  int? _allUsersSortColumnIndex;
+  bool _allUsersSortAscending = true;
+
+  List<Map<String, dynamic>> _allUsers = const [];
+  String _allUsersQuery = '';
+  int _allUsersPage = 0;
+  int _allUsersRowsPerPage = 5;
 
   @override
   void initState() {
@@ -65,7 +72,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     });
 
     try {
-      final results = await Future.wait([
+      final results = await Future.wait<Object?>([
         DatabaseService.instance.getAdminCompactOverviewStats(
           suspensionDays: 7,
         ),
@@ -73,6 +80,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         DatabaseService.instance.getAdminUpcomingSuspensions(days: 30),
         DatabaseService.instance.getAdminRecentPayments(days: 7),
         DatabaseService.instance.getAdminRecentPayments(days: 30),
+        DatabaseService.instance.fetchAllRegisteredUsers(),
       ]);
 
       if (!mounted) return;
@@ -82,6 +90,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         _suspensions30d = results[2] as List<Map<String, dynamic>>;
         _payments7d = results[3] as List<Map<String, dynamic>>;
         _payments30d = results[4] as List<Map<String, dynamic>>;
+        _allUsers = results[5] as List<Map<String, dynamic>>;
       });
     } catch (e) {
       if (!mounted) return;
@@ -112,6 +121,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             const Center(child: CircularProgressIndicator.adaptive()),
           ] else ...[
             const SizedBox(height: 10),
+            _buildUserTable(
+              title: 'All Registered Users',
+              rows: _allUsers,
+            ),
+            const SizedBox(height: 10),
             _buildSuspensionTable(
               title: 'Next 7 Days Suspension',
               rows: _suspensions7d,
@@ -138,7 +152,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       ),
     );
   }
-
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -726,7 +739,145 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     );
   }
 
+  Widget _buildUserTable({
+    required String title,
+    required List<Map<String, dynamic>> rows,
+  }) {
+    final query = _allUsersQuery;
+    final rowsPerPage = _allUsersRowsPerPage;
+    final page = _allUsersPage;
+    final sortColumnIndex = _allUsersSortColumnIndex;
+    final sortAscending = _allUsersSortAscending;
+
+    final filtered = _filteredUsers(rows, query);
+    final sorted = _sortedUsers(filtered, sortColumnIndex, sortAscending);
+    final safePage = _safePage(
+      total: sorted.length,
+      page: page,
+      rowsPerPage: rowsPerPage,
+    );
+    final paged = _paginateRows(
+      rows: sorted,
+      page: safePage,
+      rowsPerPage: rowsPerPage,
+    );
+
+    return _compactSection(
+      title: title,
+      child: Column(
+        children: [
+          _buildSearchAndPagingBar(
+            hint: 'Search users',
+            query: query,
+            rowsPerPage: rowsPerPage,
+            exportEnabled: sorted.isNotEmpty,
+            onExportTap: () => _exportUsersToExcel(title: title, rows: sorted),
+            onQueryChanged: (v) => setState(() {
+              _allUsersQuery = v;
+              _allUsersPage = 0;
+            }),
+            onRowsPerPageChanged: (v) => setState(() {
+              _allUsersRowsPerPage = v;
+              _allUsersPage = 0;
+            }),
+          ),
+          const SizedBox(height: 8),
+          if (sorted.isEmpty)
+            _emptyHint('No users found.')
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                sortColumnIndex: sortColumnIndex,
+                sortAscending: sortAscending,
+                headingRowHeight: 34,
+                dataRowMinHeight: 32,
+                dataRowMaxHeight: 36,
+                horizontalMargin: 10,
+                columnSpacing: 14,
+                columns: [
+                  const DataColumn(label: Text('No')),
+                  DataColumn(
+                    label: const Text('Type'),
+                    onSort: (i, asc) => setState(() {
+                      _allUsersSortColumnIndex = i;
+                      _allUsersSortAscending = asc;
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Name'),
+                    onSort: (i, asc) => setState(() {
+                      _allUsersSortColumnIndex = i;
+                      _allUsersSortAscending = asc;
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Number'),
+                    onSort: (i, asc) => setState(() {
+                      _allUsersSortColumnIndex = i;
+                      _allUsersSortAscending = asc;
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('BA/Dev code'),
+                    onSort: (i, asc) => setState(() {
+                      _allUsersSortColumnIndex = i;
+                      _allUsersSortAscending = asc;
+                    }),
+                  ),
+                  DataColumn(
+                    label: const Text('Registration Date'),
+                    onSort: (i, asc) => setState(() {
+                      _allUsersSortColumnIndex = i;
+                      _allUsersSortAscending = asc;
+                    }),
+                  ),
+                ],
+                rows: [
+                  for (int i = 0; i < paged.length; i++)
+                    DataRow(
+                      cells: [
+                        DataCell(
+                          _tableText('${(safePage * rowsPerPage) + i + 1}'),
+                        ),
+                        DataCell(_tableText(_shortType(paged[i]['userType']))),
+                        DataCell(
+                          _tableText(paged[i]['name']?.toString() ?? '-'),
+                        ),
+                        DataCell(
+                          _tableText(paged[i]['phone']?.toString() ?? '-'),
+                        ),
+                        DataCell(
+                          _tableText(paged[i]['userCode']?.toString() ?? '-'),
+                        ),
+                        DataCell(
+                          _tableText(
+                            _formatDate(paged[i]['registeredAt'] as DateTime?),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          _buildPager(
+            total: sorted.length,
+            page: safePage,
+            rowsPerPage: rowsPerPage,
+            onPrevious: () => setState(() {
+              _allUsersPage--;
+            }),
+            onNext: () => setState(() {
+              _allUsersPage++;
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _compactSection({
+
     required String title,
     required Widget child,
   }) {
@@ -775,6 +926,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       excel_pkg.TextCellValue('Type'),
       excel_pkg.TextCellValue('Name'),
       excel_pkg.TextCellValue('Number'),
+      excel_pkg.TextCellValue('Registered On'),
       excel_pkg.TextCellValue('Current Adds'),
       excel_pkg.TextCellValue('Valid Till'),
       excel_pkg.TextCellValue('Days'),
@@ -787,6 +939,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         excel_pkg.TextCellValue(_shortType(row['userType'])),
         excel_pkg.TextCellValue(row['name']?.toString() ?? '-'),
         excel_pkg.TextCellValue(row['phone']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(_formatDate(row['registeredAt'] as DateTime?)),
         excel_pkg.IntCellValue((row['currentAdds'] as num?)?.toInt() ?? 0),
         excel_pkg.TextCellValue(_formatDate(row['validTill'] as DateTime?)),
         excel_pkg.IntCellValue((row['daysLeft'] as num?)?.toInt() ?? 0),
@@ -813,6 +966,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       excel_pkg.TextCellValue('No'),
       excel_pkg.TextCellValue('Name'),
       excel_pkg.TextCellValue('Number'),
+      excel_pkg.TextCellValue('Registered On'),
       excel_pkg.TextCellValue('Transaction No'),
       excel_pkg.TextCellValue('Payment Date'),
       excel_pkg.TextCellValue('Amount'),
@@ -826,6 +980,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         excel_pkg.IntCellValue(i + 1),
         excel_pkg.TextCellValue(row['name']?.toString() ?? '-'),
         excel_pkg.TextCellValue(row['phone']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(_formatDate(row['registeredAt'] as DateTime?)),
         excel_pkg.TextCellValue(row['paymentRef']?.toString() ?? '-'),
         excel_pkg.TextCellValue(_formatDate(row['paymentDate'] as DateTime?)),
         excel_pkg.TextCellValue(_formatAmount(row['amount'])),
@@ -1142,7 +1297,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   String _formatDate(DateTime? date) {
     if (date == null) return '-';
-    return DateFormat('dd-MMM').format(date.toLocal());
+    return DateFormat('dd-MMM-yy').format(date.toLocal());
   }
 
   String _formatAmount(dynamic amount) {
@@ -1287,7 +1442,106 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     return sorted;
   }
 
+  List<Map<String, dynamic>> _filteredUsers(
+    List<Map<String, dynamic>> rows,
+    String query,
+  ) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return List<Map<String, dynamic>>.from(rows);
+    return rows.where((row) {
+      final haystack = [
+        _shortType(row['userType']),
+        row['name']?.toString() ?? '',
+        row['phone']?.toString() ?? '',
+        row['userCode']?.toString() ?? '',
+        _formatDate(row['registeredAt'] as DateTime?),
+      ].join(' ').toLowerCase();
+      return haystack.contains(q);
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _sortedUsers(
+    List<Map<String, dynamic>> rows,
+    int? sortColumnIndex,
+    bool ascending,
+  ) {
+    final sorted = List<Map<String, dynamic>>.from(rows);
+    if (sortColumnIndex == null) return sorted;
+
+    int compare(Map<String, dynamic> a, Map<String, dynamic> b) {
+      switch (sortColumnIndex) {
+        case 1:
+          return _shortType(a['userType']).compareTo(_shortType(b['userType']));
+        case 2:
+          return (a['name']?.toString() ?? '').compareTo(
+            b['name']?.toString() ?? '',
+          );
+        case 3:
+          return (a['phone']?.toString() ?? '').compareTo(
+            b['phone']?.toString() ?? '',
+          );
+        case 4:
+          return (a['userCode']?.toString() ?? '').compareTo(
+            b['userCode']?.toString() ?? '',
+          );
+        case 5:
+          return (a['registeredAt'] as DateTime? ??
+                  DateTime.fromMillisecondsSinceEpoch(0))
+              .compareTo(
+                b['registeredAt'] as DateTime? ??
+                    DateTime.fromMillisecondsSinceEpoch(0),
+              );
+        default:
+          return 0;
+      }
+    }
+
+    sorted.sort(compare);
+    if (!ascending) {
+      return sorted.reversed.toList();
+    }
+    return sorted;
+  }
+
+  Future<void> _exportUsersToExcel({
+    required String title,
+    required List<Map<String, dynamic>> rows,
+  }) async {
+    final excel = excel_pkg.Excel.createExcel();
+    final sheetName = _safeSheetName(title);
+    excel.rename('Sheet1', sheetName);
+    final sheet = excel[sheetName];
+
+    sheet.appendRow([
+      excel_pkg.TextCellValue('No'),
+      excel_pkg.TextCellValue('Type'),
+      excel_pkg.TextCellValue('Name'),
+      excel_pkg.TextCellValue('Number'),
+      excel_pkg.TextCellValue('BA/Dev code'),
+      excel_pkg.TextCellValue('Registration Date'),
+    ]);
+
+    for (int i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      sheet.appendRow([
+        excel_pkg.IntCellValue(i + 1),
+        excel_pkg.TextCellValue(_shortType(row['userType'])),
+        excel_pkg.TextCellValue(row['name']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(row['phone']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(row['userCode']?.toString() ?? '-'),
+        excel_pkg.TextCellValue(_formatDate(row['registeredAt'] as DateTime?)),
+      ]);
+    }
+
+    await _shareExcelFile(
+      excel: excel,
+      fileName: _safeFileName(title),
+      successMessage: '$title exported.',
+    );
+  }
+
   List<Map<String, dynamic>> _paginateRows({
+
     required List<Map<String, dynamic>> rows,
     required int page,
     required int rowsPerPage,

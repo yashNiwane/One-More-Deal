@@ -1,0 +1,28 @@
+import 'package:postgres/postgres.dart';
+
+void main() async {
+  final conn = await Connection.open(
+    Endpoint(
+      host: 'one-more-deal.cnkisqqwmvy2.ap-south-1.rds.amazonaws.com',
+      port: 5432,
+      database: 'OneMoreDeal',
+      username: 'postgres',
+      password: 'MmKnDMm#14',
+    ),
+    settings: const ConnectionSettings(sslMode: SslMode.require),
+  );
+  
+  try {
+    var res = await conn.execute("SELECT DISTINCT city FROM properties;");
+    for (var r in res) {
+      print('DB city: [' + r[0].toString() + ']');
+    }
+    
+    var res2 = await conn.execute("SELECT DISTINCT area FROM properties;");
+    print('Total distinct areas: ' + res2.length.toString());
+  } catch (e) {
+    print('Error: ' + e.toString());
+  }
+
+  await conn.close();
+}

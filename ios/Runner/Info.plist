@@ -45,5 +45,18 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires access to your camera to capture property and payment verification photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires access to your photo library to select property and payment verification photos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app requires access to your microphone (only used if recording property videos).</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>whatsapp</string>
+		<string>https</string>
+		<string>http</string>
+	</array>
 </dict>
 </plist>

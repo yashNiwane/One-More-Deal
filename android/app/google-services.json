@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "191003525122",
+    "project_id": "omdv1-ee95b",
+    "storage_bucket": "omdv1-ee95b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:191003525122:android:9d159d19f8d05a8430271b",
+        "android_client_info": {
+          "package_name": "com.onemoredeal.one_more_deal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "191003525122-ju6nab5q3dhi50m154o0aje1tosn779s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.onemoredeal.one_more_deal",
+            "certificate_hash": "317d493a7b0510fa8b3aa3e2a2536ab9920a97fa"
+          }
+        },
+        {
+          "client_id": "191003525122-t1e7m1var1j9sioesg6j399q6d6mm3ou.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.onemoredeal.one_more_deal",
+            "certificate_hash": "79b27339b9ea00a57fc68a3d0072d6bf0d3cac77"
+          }
+        },
+        {
+          "client_id": "191003525122-eummehcouhuople7c08v1fde3loaedja.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3x1vuYtVVD-lmkARPeg_xUpnYomRIDsk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "191003525122-eummehcouhuople7c08v1fde3loaedja.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

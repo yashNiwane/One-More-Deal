@@ -11,6 +11,7 @@ import '../models/subscription_model.dart';
 import '../models/subscription_request_model.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
+import 'home_screen.dart';
 import 'landing_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -28,17 +29,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   SubscriptionRequestModel? _latestRequest;
   XFile? _selectedScreenshot;
 
-  static const String _phoneNumber = '9356965876';
+  static const String _phoneNumber = '9860999991';
   static const String _upiPayeeName = 'One More Deal™';
 
   int get _amountInRupees {
     switch (_selectedPlan) {
       case SubscriptionPlan.monthly:
-        return 500;
+        return 3000;
       case SubscriptionPlan.quarterly:
-        return 1200;
+        return 6000;
       case SubscriptionPlan.halfYearly:
-        return 2000;
+        return 12000;
     }
   }
 
@@ -53,7 +54,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   
   Future<void> _checkIfBlocked() async {
     final user = await DatabaseService.instance.getUserByPhone(AuthService.userPhone);
-    if (user != null && !user.isActive) {
+    if (!mounted || user == null) return;
+
+    final isBuilderUser =
+        user.userType?.value == 'Builder' || user.userType?.value == 'Developer';
+    if (!isBuilderUser) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (_) => false,
+      );
+      return;
+    }
+
+    if (!user.isActive) {
       setState(() => _isBlocked = true);
     }
   }
@@ -87,8 +100,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _openUpiApp() async {
-    // Use phone number with Paytm UPI handle for better compatibility
-    final String upiAddress = '$_phoneNumber@paytm';
+    final String upiAddress = '$_phoneNumber@upi';
     // IMPORTANT: Do not url-encode the UPI address, GPay fails to parse '%40'
     final String urlStr = 'upi://pay?pa=$upiAddress&pn=${Uri.encodeComponent(_upiPayeeName)}&am=$_amountInRupees&cu=INR&tn=OMD+Subscription';
     final uri = Uri.parse(urlStr);
@@ -283,11 +295,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                         child: Column(
                           children: [
-                            ...SubscriptionPlan.values.map((plan) {
+                            ...[
+                              SubscriptionPlan.monthly,
+                              SubscriptionPlan.quarterly,
+                            ].map((plan) {
                               final amount = switch (plan) {
-                                SubscriptionPlan.monthly => 500,
-                                SubscriptionPlan.quarterly => 1200,
-                                SubscriptionPlan.halfYearly => 2000,
+                                SubscriptionPlan.monthly => 3000,
+                                SubscriptionPlan.quarterly => 6000,
+                                SubscriptionPlan.halfYearly => 12000,
                               };
 
                               return GestureDetector(

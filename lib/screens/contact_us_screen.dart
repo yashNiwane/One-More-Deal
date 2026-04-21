@@ -48,7 +48,7 @@ class ContactUsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-              _buildContactRow(Icons.email_outlined, 'omd.brokerassociate@gmail.com'),
+              _buildContactRow(Icons.email_outlined, 'support@omdbrokerassociate.in'),
               const SizedBox(height: 16),
               _buildContactRow(Icons.phone_outlined, '+91 9209182221'),
             ],

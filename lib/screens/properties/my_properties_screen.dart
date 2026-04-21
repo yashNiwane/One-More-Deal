@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/property_service.dart';
@@ -8,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'add_property_screen.dart';
 import 'add_builder_property_screen.dart';
 import 'edit_property_screen.dart';
+import '../subscription_screen.dart';
 
 class MyPropertiesScreen extends StatefulWidget {
   const MyPropertiesScreen({super.key});
@@ -16,14 +18,28 @@ class MyPropertiesScreen extends StatefulWidget {
   State<MyPropertiesScreen> createState() => _MyPropertiesScreenState();
 }
 
+enum _SortOption {
+  priceLow('Price: Low to High'),
+  priceHigh('Price: High to Low'),
+  newest('New first'),
+  oldest('Old first'),
+  area('Area: Largest first');
+
+  const _SortOption(this.label);
+  final String label;
+}
+
 class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
+  static const String _builderPlanPromptSeenKey = 'builder_plan_prompt_seen';
   bool _isLoading = true;
   List<PropertyModel> _properties = [];
   PropertyCategory? _selectedCategory;
   ListingType? _selectedListingType;
+  _SortOption _sortOption = _SortOption.priceLow;
+  final GlobalKey _sortIconKey = GlobalKey();
 
   List<PropertyModel> get _filteredProperties {
-    return _properties.where((p) {
+    final list = _properties.where((p) {
       if (_selectedCategory != null && p.category != _selectedCategory) {
         return false;
       }
@@ -33,6 +49,36 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       }
       return true;
     }).toList();
+
+    switch (_sortOption) {
+      case _SortOption.newest:
+        list.sort(
+          (a, b) => (b.refreshedAt ?? b.postedAt ?? DateTime(0)).compareTo(
+            a.refreshedAt ?? a.postedAt ?? DateTime(0),
+          ),
+        );
+      case _SortOption.oldest:
+        list.sort(
+          (a, b) => (a.refreshedAt ?? a.postedAt ?? DateTime(0)).compareTo(
+            b.refreshedAt ?? b.postedAt ?? DateTime(0),
+          ),
+        );
+      case _SortOption.priceLow:
+        list.sort(
+          (a, b) => (a.price ?? double.infinity).compareTo(
+            b.price ?? double.infinity,
+          ),
+        );
+      case _SortOption.priceHigh:
+        list.sort((a, b) => (b.price ?? 0).compareTo(a.price ?? 0));
+      case _SortOption.area:
+        list.sort((a, b) {
+          final aArea = a.carpetArea ?? a.builtUpArea ?? a.areaValue ?? 0;
+          final bArea = b.carpetArea ?? b.builtUpArea ?? b.areaValue ?? 0;
+          return bArea.compareTo(aArea);
+        });
+    }
+    return list;
   }
 
   @override
@@ -149,6 +195,55 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         ),
       );
     }
+  }
+
+  void _showSortMenu() {
+    final RenderBox box =
+        _sortIconKey.currentContext!.findRenderObject() as RenderBox;
+    final Offset offset = box.localToGlobal(Offset.zero);
+    showMenu<_SortOption>(
+      context: context,
+      color: AppColors.iosCardBg,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + box.size.height + 4,
+        offset.dx + box.size.width,
+        0,
+      ),
+      items: _SortOption.values.map((opt) {
+        final isSelected = opt == _sortOption;
+        return PopupMenuItem<_SortOption>(
+          value: opt,
+          height: 44,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  opt.label,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected
+                        ? AppColors.iosSystemBlue
+                        : AppColors.charcoal,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check_rounded,
+                  size: 18,
+                  color: AppColors.iosSystemBlue,
+                ),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((selected) {
+      if (selected != null) setState(() => _sortOption = selected);
+    });
   }
 
   // Helper to format price in Lakh/Crore
@@ -279,13 +374,15 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     final String? furnishStr = p.furnishingStatus?.trim().isNotEmpty == true
         ? p.furnishingStatus!.trim()
         : null;
+    final String? availableForStr =
+        p.category == PropertyCategory.residential &&
+            p.listingType == ListingType.rent &&
+            p.availableFor?.trim().isNotEmpty == true
+        ? p.availableFor!.trim()
+        : null;
     final String? availStr = p.availability?.trim().isNotEmpty == true
         ? p.availability!.trim()
         : null;
-
-    final dateStr = DateFormat(
-      'd MMM',
-    ).format(p.refreshedAt ?? p.postedAt ?? DateTime.now());
 
     Widget gChip(String label, IconData icon) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
@@ -323,6 +420,8 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       if (floorStr != null) gChip(floorStr, Icons.layers_outlined),
       if (parkingStr != null) gChip(parkingStr, Icons.directions_car_outlined),
       if (furnishStr != null) gChip(furnishStr, Icons.chair_outlined),
+      if (availableForStr != null)
+        gChip(availableForStr, Icons.family_restroom_outlined),
     ];
 
     Widget chipGrid() {
@@ -544,28 +643,6 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Padding(
-                    //   padding: const EdgeInsets.only(top: 3, bottom: 9),
-                    //   child: Row(
-                    //     mainAxisSize: MainAxisSize.min,
-                    //     children: [
-                    //       Icon(
-                    //         Icons.calendar_today_outlined,
-                    //         size: 10,
-                    //         color: Colors.black,
-                    //       ),
-                    //       const SizedBox(width: 3),
-                    //       Text(
-                    //         dateStr,
-                    //         style: GoogleFonts.inter(
-                    //           fontSize: 11,
-                    //           color: Colors.black,
-                    //           fontWeight: FontWeight.w500,
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
                     if (chips.isNotEmpty) chipGrid(),
                   ],
                 ),
@@ -886,16 +963,6 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                 const SizedBox(width: 6),
                 _buildActiveBadge(p),
                 const Spacer(),
-                // Text(
-                //   DateFormat(
-                //     'd MMM',
-                //   ).format(p.refreshedAt ?? p.postedAt ?? DateTime.now()),
-                //   style: GoogleFonts.inter(
-                //     fontSize: 11,
-                //     color: Colors.black,
-                //     fontWeight: FontWeight.w500,
-                //   ),
-                // ),
               ],
             ),
           ),
@@ -1094,6 +1161,12 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     final isBuilder =
         AuthService.userType == 'Builder' ||
         AuthService.userType == 'Developer';
+
+    if (isBuilder) {
+      final shouldContinue = await _handleFirstBuilderPostClick();
+      if (!shouldContinue || !mounted) return;
+    }
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -1103,6 +1176,61 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       ),
     );
     if (result == true) _loadProperties();
+  }
+
+  Future<bool> _handleFirstBuilderPostClick() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(_builderPlanPromptSeenKey) ?? false;
+    if (seen) return true;
+    if (!mounted) return false;
+
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Builder Payment Plans',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Choose a plan to start posting builder properties.',
+                style: GoogleFonts.inter(fontSize: 13)),
+            const SizedBox(height: 12),
+            Text('1 Month: ₹3000',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('3 Months: ₹6000',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'later'),
+            child: Text('Continue',
+                style: GoogleFonts.inter(color: AppColors.iosSystemBlue)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'pay'),
+            child: Text('Pay Now', style: GoogleFonts.inter()),
+          ),
+        ],
+      ),
+    );
+
+    await prefs.setBool(_builderPlanPromptSeenKey, true);
+    if (action == 'pay') {
+      if (!mounted) return false;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      );
+      return false;
+    }
+    return true;
   }
 
   Widget _buildFilterBar() {
@@ -1156,7 +1284,6 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
                   : ListingType.resale,
             ),
           ),
-
         ],
       ),
     );
@@ -1333,6 +1460,35 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               ),
             ),
             actions: [
+              if (_properties.isNotEmpty)
+                GestureDetector(
+                  key: _sortIconKey,
+                  onTap: _showSortMenu,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: _sortOption != _SortOption.priceLow
+                          ? AppColors.iosSystemBlue.withValues(alpha: 0.12)
+                          : AppColors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.sort_rounded,
+                      color: _sortOption != _SortOption.priceLow
+                          ? AppColors.iosSystemBlue
+                          : AppColors.charcoal,
+                      size: 19,
+                    ),
+                  ),
+                ),
               if (_properties.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(right: 16),

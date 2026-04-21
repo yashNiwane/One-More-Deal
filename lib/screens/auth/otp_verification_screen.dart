@@ -103,9 +103,11 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
 
         if (!mounted) return;
         
-        // Check if user is blocked - if so, navigate to subscription screen
+        // Check if user is blocked - builder/developer go to subscription screen.
+        // Brokers are free users and should continue to app.
         final user = await DatabaseService.instance.getUserByPhone(widget.phone);
-        if (user != null && !user.isActive) {
+        final isBuilderUser = user?.userType?.value == 'Builder' || user?.userType?.value == 'Developer';
+        if (user != null && !user.isActive && isBuilderUser) {
           debugPrint('[OTP] User is blocked - navigating to subscription screen');
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const SubscriptionScreen()),

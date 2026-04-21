@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/property_model.dart';
 import '../../models/enquiry_model.dart';
 import '../../services/property_service.dart';
+import '../../services/auth_service.dart';
 
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'filter_bottom_sheet.dart';
@@ -27,12 +28,11 @@ class PropertiesFeedScreen extends StatefulWidget {
 }
 
 enum _SortOption {
-  recommended('Recommended'),
-  newest('Newest First'),
-  oldest('Oldest First'),
   priceLow('Price: Low to High'),
   priceHigh('Price: High to Low'),
-  area('Area: Largest First');
+  newest('New first'),
+  oldest('Old first'),
+  area('Area: Largest first');
 
   const _SortOption(this.label);
   final String label;
@@ -42,29 +42,23 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
   bool _isLoading = false;
   List<PropertyModel> _properties = [];
   PropertyFilter _currentFilter = PropertyFilter();
-  _SortOption _sortOption = _SortOption.recommended;
+  _SortOption _sortOption = _SortOption.priceLow;
   final GlobalKey _sortIconKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
+
   final Map<int, GlobalKey> _propertyCardKeys = {};
   int? _highlightedPropertyId;
   bool _didFocusInitialProperty = false;
   bool _didRelaxInitialUserTypeFilter = false;
-
+  bool get _isBuilderLoggedIn =>
+      AuthService.userType == 'Builder' || AuthService.userType == 'Developer';
+  bool get _isBuilderPropertiesView =>
+      _currentFilter.userTypeFilter == UserTypeFilter.builder;
+  List<_SortOption> get _availableSortOptions => _SortOption.values;
+  bool get _isBuilderUser => _isBuilderLoggedIn || _isBuilderPropertiesView;
   List<PropertyModel> get _sorted {
     final list = List<PropertyModel>.from(_properties);
     switch (_sortOption) {
-      case _SortOption.recommended:
-        final now = DateTime.now();
-        // Refreshes every 10 minutes
-        final seed = (now.year * 1000000) + (now.month * 10000) + (now.day * 100) + (now.hour * 6) + (now.minute ~/ 10);
-        list.sort((a, b) {
-          final hashA = (a.id ?? 0) ^ seed;
-          final hashB = (b.id ?? 0) ^ seed;
-          // Simple fast hash to spread values evenly
-          final scoreA = (hashA * 2654435761) % 4294967296;
-          final scoreB = (hashB * 2654435761) % 4294967296;
-          return scoreA.compareTo(scoreB);
-        });
       case _SortOption.newest:
         list.sort(
           (a, b) => (b.refreshedAt ?? b.postedAt ?? DateTime(0)).compareTo(
@@ -102,9 +96,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
     if (widget.initialFilter != null) {
       _currentFilter = PropertyFilter.from(widget.initialFilter!);
     }
-    if (widget.initialSortIndex != null && widget.initialSortIndex! >= 0 && widget.initialSortIndex! < _SortOption.values.length) {
-      _sortOption = _SortOption.values[widget.initialSortIndex!];
-    }
+    _sortOption = _SortOption.priceLow;
     _loadProperties();
   }
 
@@ -234,7 +226,7 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
         offset.dx + box.size.width,
         0,
       ),
-      items: _SortOption.values.map((opt) {
+      items: _availableSortOptions.map((opt) {
         final isSelected = opt == _sortOption;
         return PopupMenuItem<_SortOption>(
           value: opt,
@@ -351,6 +343,12 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
     final String? furnishStr = p.furnishingStatus?.trim().isNotEmpty == true
         ? p.furnishingStatus!.trim()
         : null;
+    final String? availableForStr =
+        p.category == PropertyCategory.residential &&
+            p.listingType == ListingType.rent &&
+            p.availableFor?.trim().isNotEmpty == true
+        ? p.availableFor!.trim()
+        : null;
     final String? availStr = p.availability?.trim().isNotEmpty == true
         ? p.availability!.trim()
         : null;
@@ -399,6 +397,8 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
       if (floorStr != null) gChip(floorStr, Icons.layers_outlined),
       if (parkingStr != null) gChip(parkingStr, Icons.directions_car_outlined),
       if (furnishStr != null) gChip(furnishStr, Icons.chair_outlined),
+      if (availableForStr != null)
+        gChip(availableForStr, Icons.family_restroom_outlined),
     ];
 
     // ── 2-column chip grid aligned right ──────────────
@@ -1521,13 +1521,16 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
                 final cardKey = prop.id != null
                     ? (_propertyCardKeys[prop.id!] ??= GlobalKey())
                     : GlobalKey();
-                // Show builder card for new launch properties OR properties with category newProperty
-                final isBuilder =
-                    prop.listingType == ListingType.newLaunch ||
+                // Builder card only for genuine new-launch builder properties:
+                // BOTH listingType==newLaunch AND category==newProperty must be true.
+                // Using OR was causing resale/rent properties (with stale category data)
+                // to incorrectly render with the builder card style.
+                final isBuilderCard =
+                    prop.listingType == ListingType.newLaunch &&
                     prop.category == PropertyCategory.newProperty;
                 return KeyedSubtree(
                   key: cardKey,
-                  child: isBuilder
+                  child: isBuilderCard
                       ? _buildBuilderCard(prop)
                       : _buildPropertyCard(prop),
                 );

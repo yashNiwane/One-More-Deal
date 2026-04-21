@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_colors.dart';
 import '../models/property_model.dart';
 import '../services/auth_service.dart';
+import '../services/app_update_service.dart';
 import 'landing_screen.dart';
 
 import 'home_page_screen.dart';
@@ -14,6 +16,7 @@ import 'properties/properties_feed_screen.dart';
 import 'profile_screen.dart';
 import 'contact_us_screen.dart';
 import 'properties/filter_bottom_sheet.dart';
+import 'subscription_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +26,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  static const String _builderPlanPromptSeenKey = 'builder_plan_prompt_seen';
   int _currentIndex = 0;
   DateTime? _lastCheckedAt;
   int? _discoverFocusPropertyId;
@@ -36,6 +40,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkSession();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateService.checkAndRunImmediateUpdate();
+    });
     // Set iOS-style light status bar for internal screens
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -232,6 +239,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isBuilder =
         AuthService.userType == 'Builder' ||
         AuthService.userType == 'Developer';
+
+    if (isBuilder) {
+      final shouldContinue = await _handleFirstBuilderPostClick();
+      if (!shouldContinue || !mounted) return;
+    }
+
     final result = await Navigator.push<bool?>(
       context,
       MaterialPageRoute(
@@ -243,6 +256,61 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (result == true) {
       setState(() => _homeRefreshToken++);
     }
+  }
+
+  Future<bool> _handleFirstBuilderPostClick() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(_builderPlanPromptSeenKey) ?? false;
+    if (seen) return true;
+
+    if (!mounted) return false;
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Builder Payment Plans',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Choose a plan to start posting builder properties.',
+                style: GoogleFonts.inter(fontSize: 13)),
+            const SizedBox(height: 12),
+            Text('1 Month: ₹3000',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('3 Months: ₹6000',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'later'),
+            child: Text('Continue',
+                style: GoogleFonts.inter(color: AppColors.iosSystemBlue)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'pay'),
+            child: Text('Pay Now', style: GoogleFonts.inter()),
+          ),
+        ],
+      ),
+    );
+
+    await prefs.setBool(_builderPlanPromptSeenKey, true);
+    if (action == 'pay') {
+      if (!mounted) return false;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      );
+      return false;
+    }
+    return true;
   }
 
   Widget _buildNavItem(

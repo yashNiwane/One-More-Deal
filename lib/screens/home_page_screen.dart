@@ -9,6 +9,7 @@ import '../services/property_service.dart';
 import 'properties/add_builder_property_screen.dart';
 import 'properties/add_property_screen.dart';
 import 'properties/filter_bottom_sheet.dart';
+import 'subscription_screen.dart';
 
 class HomePageScreen extends StatefulWidget {
   final void Function(int propertyId, UserTypeFilter? userTypeHint)?
@@ -41,6 +42,7 @@ enum _HomeSortOption {
 class _HomePageScreenState extends State<HomePageScreen> {
   static const String _cityPrefKey = 'home_selected_city';
   static const String _areaPrefKey = 'home_selected_area';
+  static const String _builderPlanPromptSeenKey = 'builder_plan_prompt_seen';
 
   bool _isLoading = true;
   bool _isAreaLoading = false;
@@ -213,6 +215,10 @@ class _HomePageScreenState extends State<HomePageScreen> {
     final isBuilder =
         AuthService.userType == 'Builder' ||
         AuthService.userType == 'Developer';
+    if (isBuilder) {
+      final shouldContinue = await _handleFirstBuilderPostClick();
+      if (!shouldContinue || !mounted) return;
+    }
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -224,6 +230,61 @@ class _HomePageScreenState extends State<HomePageScreen> {
     if (result == true) {
       _loadProperties();
     }
+  }
+
+  Future<bool> _handleFirstBuilderPostClick() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(_builderPlanPromptSeenKey) ?? false;
+    if (seen) return true;
+    if (!mounted) return false;
+
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Builder Payment Plans',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Choose a plan to start posting builder properties.',
+                style: GoogleFonts.inter(fontSize: 13)),
+            const SizedBox(height: 12),
+            Text('1 Month: ₹3000',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text('3 Months: ₹6000',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'later'),
+            child: Text('Continue',
+                style: GoogleFonts.inter(color: AppColors.iosSystemBlue)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'pay'),
+            child: Text('Pay Now', style: GoogleFonts.inter()),
+          ),
+        ],
+      ),
+    );
+
+    await prefs.setBool(_builderPlanPromptSeenKey, true);
+    if (action == 'pay') {
+      if (!mounted) return false;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      );
+      return false;
+    }
+    return true;
   }
 
   void _openFilterBottomSheet() {
@@ -624,7 +685,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
       children: [
         Expanded(
           child: Text(
-            'Find one more deal with clarity.',
+            'One More Deal Connects Brokers to Brokers and Builders with Clarity.',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -712,11 +773,8 @@ class _HomePageScreenState extends State<HomePageScreen> {
           iconColor: AppColors.success,
           isFullWidth: true,
           onTap: () {
-            final filter = PropertyFilter(city: _selectedCity)
+            final filter = PropertyFilter()
               ..userTypeFilter = UserTypeFilter.builder;
-            if (_selectedArea != null && _selectedArea!.trim().isNotEmpty) {
-              filter.area = _selectedArea!.trim();
-            }
             widget.onOpenDiscoverWithFilter?.call(filter);
           },
         ),

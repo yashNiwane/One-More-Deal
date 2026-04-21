@@ -49,6 +49,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       floorCategory: widget.currentFilter.floorCategory,
       flatType: widget.currentFilter.flatType,
       furnishingStatus: widget.currentFilter.furnishingStatus,
+      availableFor: widget.currentFilter.availableFor,
       userTypeFilter: widget.currentFilter.userTypeFilter,
       minPrice: widget.currentFilter.minPrice,
       maxPrice: widget.currentFilter.maxPrice,
@@ -406,8 +407,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         _filter.userTypeFilter == UserTypeFilter.broker;
     bool isBuilder = _filter.userTypeFilter == UserTypeFilter.builder;
 
-    bool isResi =
-        _filter.category == null ||
+    bool isResi = _filter.category == null ||
         _filter.category == PropertyCategory.residential;
     bool isComm = _filter.category == PropertyCategory.commercial;
     bool isPlot = _filter.category == PropertyCategory.plot;
@@ -441,10 +441,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     }
 
     bool showSociety = !isPlot;
-    bool showBhk = !isPlot && !isBuilder;
-    bool showFloor = !isPlot && !isBuilder;
-    bool showFurnishing = _filter.listingType == ListingType.rent;
-    bool showListingType = isBroker;
+    bool showBhk = !isPlot && !isBuilder && _filter.category != null;
+    bool showFloor = !isPlot && !isBuilder && _filter.category != null;
+    bool showFurnishing = !isPlot && _filter.listingType == ListingType.rent;
+    bool showAvailableFor =
+        isResi && !isPlot && _filter.listingType == ListingType.rent && !isBuilder;
+    bool showListingType = isBroker && !isPlot; // Plot uses its own listing_type
     bool showSubcategory = isBroker;
 
     return DraggableScrollableSheet(
@@ -535,18 +537,19 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                             _sectionHeader('PROPERTY CATEGORY'),
                             _chipGroup<UserTypeFilter>(
                               items: UserTypeFilter.values,
-                              selected: _filter.userTypeFilter ?? UserTypeFilter.broker,
+                              selected: _filter.userTypeFilter, // null = no filter, nothing forced
                               label: (u) => u == UserTypeFilter.builder ? '🏗 Builder' : '🤝 Broker',
-                              activeColor: (_filter.userTypeFilter ?? UserTypeFilter.broker) == UserTypeFilter.builder
+                              activeColor: _filter.userTypeFilter == UserTypeFilter.builder
                                   ? const Color(0xFFE69A1A)
                                   : AppColors.iosSystemBlue,
                               onTap: (val) {
                                 setState(() {
-                                  _filter.userTypeFilter = val ?? UserTypeFilter.broker;
+                                  _filter.userTypeFilter = val; // null clears the filter
                                   if (_filter.userTypeFilter == UserTypeFilter.builder) {
                                     _filter.category = null;
                                     _filter.listingType = null;
                                     _filter.floorCategory = null;
+                                    _filter.availableFor = null;
                                     _filter.brokerIds = null;
                                   }
                                 });
@@ -561,16 +564,20 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                   PropertyCategory.commercial,
                                   PropertyCategory.plot,
                                 ],
-                                selected: _filter.category ?? PropertyCategory.residential,
+                                selected: _filter.category, // null = no filter, nothing highlighted
                                 label: (c) => c.value,
                                 onTap: (val) {
                                   setState(() {
-                                    _filter.category = val ?? PropertyCategory.residential;
+                                    _filter.category = val; // null means "all categories"
                                     if (_filter.category == PropertyCategory.plot) {
                                       _filter.flatType = null;
                                       _filter.society = null;
                                       _filter.floorCategory = null;
+                                      _filter.listingType = null; // plots have their own listing_type
                                       _societyCtrl.clear();
+                                    }
+                                    if (_filter.category != PropertyCategory.residential) {
+                                      _filter.availableFor = null;
                                     }
                                   });
                                 },
@@ -586,6 +593,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                 onTap: (val) {
                                   setState(() {
                                     _filter.listingType = val;
+                                    if (_filter.listingType != ListingType.rent) {
+                                      _filter.availableFor = null;
+                                    }
                                   });
                                 },
                               ),
@@ -637,6 +647,16 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           label: (t) => t,
                           onTap: (val) =>
                               setState(() => _filter.furnishingStatus = val),
+                        ),
+                      ],
+                      if (showAvailableFor) ...[
+                        _sectionHeader('AVAILABLE FOR'),
+                        _chipGroup<String>(
+                          items: const ['Family', 'Bachelor', 'Any'],
+                          selected: _filter.availableFor,
+                          label: (t) => t,
+                          onTap: (val) =>
+                              setState(() => _filter.availableFor = val),
                         ),
                       ],
 
