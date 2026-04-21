@@ -26,6 +26,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isEditing = false;
   bool _isSaving = false;
   static final RegExp _englishAsciiRegex = RegExp(r'^[\x00-\x7F]+$');
+  static const String _defaultBrokerReraNo = 'A5210000000000';
+
+  void _applyDefaultBrokerReraNoIfNeeded() {
+    if (_userType != 'Broker') return;
+    final storedRera = AuthService.currentUser?.reraNo;
+    if (storedRera != null) return;
+    if (_reraCtrl.text.trim().isNotEmpty) return;
+    _reraCtrl.text = _defaultBrokerReraNo;
+  }
 
   String? _validateEnglish(
     String? value, {
@@ -44,13 +53,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _userType = AuthService.userType;
     _nameCtrl = TextEditingController(text: AuthService.userName);
     _cityCtrl = TextEditingController(text: AuthService.userCity);
     _companyCtrl = TextEditingController(text: AuthService.userCompanyName);
     _reraCtrl = TextEditingController(text: AuthService.userReraNo);
     _areaCtrl = TextEditingController(text: AuthService.userArea);
     _officeCtrl = TextEditingController(text: AuthService.userOfficeAddress);
-    _userType = AuthService.userType;
+    _applyDefaultBrokerReraNoIfNeeded();
   }
 
   @override
@@ -73,7 +83,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         userType: _userType,
         city: _cityCtrl.text.trim(),
         companyName: _companyCtrl.text.trim(),
-        reraNo: _userType == 'Broker' ? _reraCtrl.text.trim() : null,
+        reraNo:
+            (_userType == 'Broker' ||
+                    _userType == 'Builder' ||
+                    _userType == 'Developer')
+                ? _reraCtrl.text.trim()
+                : null,
         area: _areaCtrl.text.trim(),
         officeAddress: _officeCtrl.text.trim(),
       );
@@ -498,13 +513,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _companyCtrl,
                   isLast: false,
                 ),
-                if (_userType == 'Broker' || _userType == 'Builder') ...[
+                if (_userType == 'Broker' ||
+                    _userType == 'Builder' ||
+                    _userType == 'Developer') ...[
                   Container(
                     height: 0.5,
                     color: AppColors.iosSeparator.withValues(alpha: 0.3),
                     margin: const EdgeInsets.only(left: 16),
                   ),
-                  _buildFormField('A5210000000000', _reraCtrl, isOptional: true),
+                  _buildFormField('RERA_NO', _reraCtrl, isOptional: true),
                 ],
                 Container(
                   height: 0.5,
@@ -534,6 +551,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _areaCtrl.text = AuthService.userArea;
                     _officeCtrl.text = AuthService.userOfficeAddress;
                     _userType = AuthService.userType;
+                    _applyDefaultBrokerReraNoIfNeeded();
                     setState(() => _isEditing = false);
                   },
                   child: Container(
@@ -657,7 +675,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       (Icons.business_outlined, 'Type', AuthService.userType),
       (Icons.location_city_outlined, 'City', AuthService.userCity),
       (Icons.apartment_outlined, 'Company', AuthService.userCompanyName),
-      if (userType == 'Broker' || userType == 'Builder')
+      if (userType == 'Broker' || userType == 'Builder' || userType == 'Developer')
         (Icons.verified_outlined, 'RERA', AuthService.userReraNo),
       (Icons.map_outlined, 'Area', AuthService.userArea),
       (Icons.location_on_outlined, 'Office', AuthService.userOfficeAddress),

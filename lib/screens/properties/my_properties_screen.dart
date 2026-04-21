@@ -1244,33 +1244,45 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
           _buildChip(
             'Residential',
             _selectedCategory == PropertyCategory.residential,
-            () => setState(
-              () => _selectedCategory =
-                  _selectedCategory == PropertyCategory.residential
-                  ? null
-                  : PropertyCategory.residential,
-            ),
+            () => setState(() {
+              final isSelected =
+                  _selectedCategory == PropertyCategory.residential;
+              _selectedCategory =
+                  isSelected ? null : PropertyCategory.residential;
+              if (!isSelected && _selectedListingType == ListingType.plot) {
+                _selectedListingType = null;
+              }
+            }),
           ),
           const SizedBox(width: 8),
           _buildChip(
             'Commercial',
             _selectedCategory == PropertyCategory.commercial,
-            () => setState(
-              () => _selectedCategory =
-                  _selectedCategory == PropertyCategory.commercial
-                  ? null
-                  : PropertyCategory.commercial,
-            ),
+            () => setState(() {
+              final isSelected =
+                  _selectedCategory == PropertyCategory.commercial;
+              _selectedCategory =
+                  isSelected ? null : PropertyCategory.commercial;
+              if (!isSelected && _selectedListingType == ListingType.plot) {
+                _selectedListingType = null;
+              }
+            }),
           ),
           const SizedBox(width: 8),
           _buildChip(
             'Rent',
             _selectedListingType == ListingType.rent,
             () => setState(
-              () => _selectedListingType =
-                  _selectedListingType == ListingType.rent
-                  ? null
-                  : ListingType.rent,
+              () {
+                if (_selectedListingType == ListingType.rent) {
+                  _selectedListingType = null;
+                  return;
+                }
+                if (_selectedCategory == PropertyCategory.plot) {
+                  _selectedCategory = null;
+                }
+                _selectedListingType = ListingType.rent;
+              },
             ),
           ),
           const SizedBox(width: 8),
@@ -1278,11 +1290,34 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
             'Resale',
             _selectedListingType == ListingType.resale,
             () => setState(
-              () => _selectedListingType =
-                  _selectedListingType == ListingType.resale
-                  ? null
-                  : ListingType.resale,
+              () {
+                if (_selectedListingType == ListingType.resale) {
+                  _selectedListingType = null;
+                  return;
+                }
+                if (_selectedCategory == PropertyCategory.plot) {
+                  _selectedCategory = null;
+                }
+                _selectedListingType = ListingType.resale;
+              },
             ),
+          ),
+          const SizedBox(width: 8),
+          _buildChip(
+            'Plot',
+            _selectedCategory == PropertyCategory.plot,
+            () => setState(() {
+              final isSelected = _selectedCategory == PropertyCategory.plot;
+              if (isSelected) {
+                _selectedCategory = null;
+                if (_selectedListingType == ListingType.plot) {
+                  _selectedListingType = null;
+                }
+              } else {
+                _selectedCategory = PropertyCategory.plot;
+                _selectedListingType = ListingType.plot;
+              }
+            }),
           ),
         ],
       ),

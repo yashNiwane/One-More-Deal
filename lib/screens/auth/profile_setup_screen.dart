@@ -26,6 +26,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   String _userType = 'Broker';
   bool _isSaving = false;
   static final RegExp _englishAsciiRegex = RegExp(r'^[\x00-\x7F]+$');
+  static const String _defaultBrokerReraNo = 'A5210000000000';
+
+  void _applyDefaultBrokerReraNoIfNeeded() {
+    if (_userType != 'Broker') return;
+    final storedRera = AuthService.currentUser?.reraNo;
+    if (storedRera != null) return;
+    if (_reraController.text.trim().isNotEmpty) return;
+    _reraController.text = _defaultBrokerReraNo;
+  }
 
   String? _validateEnglish(
     String? value, {
@@ -39,6 +48,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return 'Only English characters are allowed';
     }
     return null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _applyDefaultBrokerReraNoIfNeeded();
   }
 
   @override
@@ -61,7 +76,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       userType: _userType,
       city: _cityController.text.trim(),
       companyName: _companyController.text.trim(),
-      reraNo: _userType == 'Broker' ? _reraController.text.trim() : null,
+      reraNo:
+          (_userType == 'Broker' ||
+                  _userType == 'Builder' ||
+                  _userType == 'Developer')
+              ? _reraController.text.trim()
+              : null,
       area: _areaController.text.trim(),
       officeAddress: _officeAddressController.text.trim(),
     );
@@ -294,7 +314,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             emoji: '🤝',
                             description: 'I connect\nbuyers & sellers',
                             isSelected: _userType == 'Broker',
-                            onTap: () => setState(() => _userType = 'Broker'),
+                            onTap: () => setState(() {
+                              _userType = 'Broker';
+                              _applyDefaultBrokerReraNoIfNeeded();
+                            }),
                           ),
                           const SizedBox(width: 14),
                           _UserTypeCard(
@@ -381,7 +404,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       ),
                     ),
 
-                    if (_userType == 'Broker') ...[
+                    if (_userType == 'Broker' ||
+                        _userType == 'Builder' ||
+                        _userType == 'Developer') ...[
                       const SizedBox(height: 24),
                       FadeInUp(
                         duration: const Duration(milliseconds: 650),
