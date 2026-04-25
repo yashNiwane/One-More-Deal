@@ -177,6 +177,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     bool isNumber = false,
     String? hint,
     bool isOptional = false,
+    double? minValue,
+    String? minValueError,
   }) {
     return TextFormField(
       controller: controller,
@@ -214,6 +216,16 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
             val.trim().isNotEmpty &&
             double.tryParse(val.trim()) == null) {
           return 'Use English digits only';
+        }
+        if (isNumber &&
+            minValue != null &&
+            val != null &&
+            val.trim().isNotEmpty) {
+          final parsed = double.tryParse(val.trim());
+          if (parsed != null && parsed < minValue) {
+            return minValueError ??
+                'Minimum value is ${minValue.toStringAsFixed(0)}';
+          }
         }
         if (!isNumber &&
             val != null &&
@@ -516,10 +528,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                     'Listing Type',
                     _listingType,
                     _category == PropertyCategory.commercial
-                        ? [
-                            ListingType.resale,
-                            ListingType.rent,
-                          ]
+                        ? [ListingType.resale, ListingType.rent]
                         : [ListingType.resale, ListingType.rent],
                     (t) => t.value,
                     (val) {
@@ -632,6 +641,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                   _priceCtrl,
                   isNumber: true,
                   hint: _isRent ? 'e.g., 15000' : 'e.g., 5000000',
+                  minValue: (!_isRent && _listingType == ListingType.resale)
+                      ? 2000000
+                      : null,
+                  minValueError: 'Minimum price for resale is 2000000',
                 ),
                 if (_isRent)
                   _buildFormField(

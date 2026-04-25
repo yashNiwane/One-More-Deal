@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_colors.dart';
 import '../models/property_model.dart';
 import '../services/auth_service.dart';
+import '../services/database_service.dart';
 import '../services/app_update_service.dart';
 import 'landing_screen.dart';
 
@@ -259,6 +260,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<bool> _handleFirstBuilderPostClick() async {
+    final paymentsEnabled = await DatabaseService.instance.isFeatureEnabled(
+      'builder_payments_enabled',
+      fallback: false,
+    );
+    if (!paymentsEnabled) return true;
+
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool(_builderPlanPromptSeenKey) ?? false;
     if (seen) return true;

@@ -29,9 +29,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const String _defaultBrokerReraNo = 'A5210000000000';
 
   void _applyDefaultBrokerReraNoIfNeeded() {
-    if (_userType != 'Broker') return;
-    final storedRera = AuthService.currentUser?.reraNo;
-    if (storedRera != null) return;
+    if (!(_userType == 'Broker' ||
+        _userType == 'Builder' ||
+        _userType == 'Developer')) {
+      return;
+    }
+    final storedRera = AuthService.currentUser?.reraNo?.trim() ?? '';
+    if (storedRera.isNotEmpty) return;
     if (_reraCtrl.text.trim().isNotEmpty) return;
     _reraCtrl.text = _defaultBrokerReraNo;
   }
@@ -199,7 +203,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: TextButton(
-                    onPressed: () => setState(() => _isEditing = true),
+                    onPressed: () {
+                      _applyDefaultBrokerReraNoIfNeeded();
+                      setState(() => _isEditing = true);
+                    },
                     child: Text(
                       'Edit',
                       style: GoogleFonts.inter(
@@ -676,7 +683,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       (Icons.location_city_outlined, 'City', AuthService.userCity),
       (Icons.apartment_outlined, 'Company', AuthService.userCompanyName),
       if (userType == 'Broker' || userType == 'Builder' || userType == 'Developer')
-        (Icons.verified_outlined, 'RERA', AuthService.userReraNo),
+        (
+          Icons.verified_outlined,
+          'RERA',
+          AuthService.userReraNo.trim().isEmpty
+              ? _defaultBrokerReraNo
+              : AuthService.userReraNo,
+        ),
       (Icons.map_outlined, 'Area', AuthService.userArea),
       (Icons.location_on_outlined, 'Office', AuthService.userOfficeAddress),
     ];

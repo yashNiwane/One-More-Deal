@@ -19,6 +19,54 @@ class DatabaseService {
   bool _connecting = false;
   bool get isConnected => _conn != null;
 
+  Future<void> _ensureFeatureFlagsTable() async {
+    await (await _db).execute('''
+      CREATE TABLE IF NOT EXISTS feature_flags (
+        flag_key TEXT PRIMARY KEY,
+        enabled BOOLEAN NOT NULL DEFAULT false,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    ''');
+  }
+
+  /// Reads a feature flag stored in DB.
+  /// If the flag is missing or DB is unreachable, returns [fallback].
+  Future<bool> isFeatureEnabled(
+    String flagKey, {
+    bool fallback = false,
+  }) async {
+    try {
+      await _ensureFeatureFlagsTable();
+      final res = await (await _db).execute(
+        Sql.named(
+          'SELECT enabled FROM feature_flags WHERE flag_key = @k LIMIT 1',
+        ),
+        parameters: {'k': flagKey},
+      );
+      if (res.isEmpty) return fallback;
+      final value = res.first[0];
+      if (value is bool) return value;
+      return fallback;
+    } catch (e) {
+      debugPrint('[DB] isFeatureEnabled($flagKey) failed: $e');
+      return fallback;
+    }
+  }
+
+  /// Upserts a feature flag (useful for admin tooling).
+  Future<void> setFeatureEnabled(String flagKey, bool enabled) async {
+    await _ensureFeatureFlagsTable();
+    await (await _db).execute(
+      Sql.named('''
+        INSERT INTO feature_flags (flag_key, enabled, updated_at)
+        VALUES (@k, @e, NOW())
+        ON CONFLICT (flag_key)
+        DO UPDATE SET enabled = @e, updated_at = NOW()
+      '''),
+      parameters: {'k': flagKey, 'e': enabled},
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // CONNECTION
   // ═══════════════════════════════════════════════════════════════════════
@@ -710,6 +758,9 @@ class DatabaseService {
     await (await _db).execute(
       Sql.named('''
         UPDATE properties SET
+          category        = @category,
+          listing_type    = @listingType,
+          city            = @city,
           area            = @area,
           subarea         = @subarea,
           society_name    = @societyName,
@@ -717,6 +768,7 @@ class DatabaseService {
           area_value      = @areaValue,
           built_up_area   = @builtUpArea,
           carpet_area     = @carpetArea,
+          area_unit       = @areaUnit,
           floor_number    = @floorNumber,
           floor_category  = @floorCategory,
           price           = @price,
@@ -725,12 +777,21 @@ class DatabaseService {
           possession_date = @possessionDate,
           parking         = @parking,
           furnishing_status = @furnishingStatus,
-          available_for   = @availableFor
+          available_for   = @availableFor,
+          rera_no         = @reraNo,
+          total_buildings = @totalBuildings,
+          amenities_count = @amenitiesCount,
+          building_structure = @buildingStructure,
+          total_units     = @totalUnits,
+          variants        = @variants::jsonb
         WHERE id = @id AND user_id = @userId
       '''),
       parameters: {
         'id': p.id,
         'userId': p.userId,
+        'category': p.category.value,
+        'listingType': p.listingType.value,
+        'city': p.city,
         'area': p.area,
         'subarea': p.subarea,
         'societyName': p.societyName,
@@ -738,6 +799,7 @@ class DatabaseService {
         'areaValue': p.areaValue,
         'builtUpArea': p.builtUpArea,
         'carpetArea': p.carpetArea,
+        'areaUnit': p.areaUnit,
         'floorNumber': p.floorNumber,
         'floorCategory': p.floorCategory?.value,
         'price': p.price,
@@ -747,6 +809,12 @@ class DatabaseService {
         'parking': p.parking,
         'furnishingStatus': p.furnishingStatus,
         'availableFor': p.availableFor,
+        'reraNo': p.reraNo,
+        'totalBuildings': p.totalBuildings,
+        'amenitiesCount': p.amenitiesCount,
+        'buildingStructure': p.buildingStructure,
+        'totalUnits': p.totalUnits,
+        'variants': p.variants != null ? jsonEncode(p.variants) : null,
       },
     );
   }

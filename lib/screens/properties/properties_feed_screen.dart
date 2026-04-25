@@ -349,7 +349,10 @@ class _PropertiesFeedScreenState extends State<PropertiesFeedScreen> {
             p.availableFor?.trim().isNotEmpty == true
         ? p.availableFor!.trim()
         : null;
-    final String? availStr = p.availability?.trim().isNotEmpty == true
+    final bool isBuilderProperty =
+        p.listingType == ListingType.newLaunch &&
+        p.category == PropertyCategory.newProperty;
+    final String? availStr = isBuilderProperty && p.availability?.trim().isNotEmpty == true
         ? p.availability!.trim()
         : null;
 

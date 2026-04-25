@@ -26,7 +26,7 @@ class PropertyService {
 
   // ── Edit ───────────────────────────────────────────────────────────────
 
-  /// Updates editable fields; non-editable fields (city, type) stay fixed.
+  /// Updates a property listing (editable fields only).
   static Future<void> updateProperty(PropertyModel property) async {
     return DatabaseService.instance.updateProperty(property);
   }

@@ -230,6 +230,24 @@ class AuthService {
         }
         return true;
       }
+
+      final isBuilderUser = userType == 'builder' || userType == 'developer';
+      if (isBuilderUser) {
+        final paymentsEnabled = await DatabaseService.instance.isFeatureEnabled(
+          'builder_payments_enabled',
+          fallback: false,
+        );
+        if (!paymentsEnabled) {
+          if (!user.isActive) {
+            await DatabaseService.instance.activateUser(user.phone);
+            _currentUser =
+                await DatabaseService.instance.getUserByPhone(user.phone);
+          } else {
+            _currentUser = user;
+          }
+          return true;
+        }
+      }
       
       // Check if user is blocked
       if (!user.isActive) {

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/app_colors.dart';
 import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
 import '../../services/property_service.dart';
 import '../../models/property_model.dart';
 import 'package:intl/intl.dart';
@@ -87,12 +88,14 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
     final isBuilder =
         AuthService.userType == 'Builder' ||
         AuthService.userType == 'Developer';
-    _selectedCategory = isBuilder
-        ? PropertyCategory.newProperty
-        : PropertyCategory.residential;
-    _selectedListingType = isBuilder
-        ? ListingType.newLaunch
-        : ListingType.resale;
+    if (isBuilder) {
+      _selectedCategory = PropertyCategory.newProperty;
+      _selectedListingType = ListingType.newLaunch;
+    } else {
+      // Default to showing ALL listings (including Plot) in "My Listings".
+      _selectedCategory = null;
+      _selectedListingType = null;
+    }
     _loadProperties();
   }
 
@@ -1179,6 +1182,12 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
   }
 
   Future<bool> _handleFirstBuilderPostClick() async {
+    final paymentsEnabled = await DatabaseService.instance.isFeatureEnabled(
+      'builder_payments_enabled',
+      fallback: false,
+    );
+    if (!paymentsEnabled) return true;
+
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool(_builderPlanPromptSeenKey) ?? false;
     if (seen) return true;

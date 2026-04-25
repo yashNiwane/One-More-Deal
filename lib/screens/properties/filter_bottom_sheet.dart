@@ -524,8 +524,38 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
 
+                      // Plot is a frequently-used filter; keep property type easy to access.
+                      if (showSubcategory) ...[
+                        _sectionHeader('PROPERTY TYPE'),
+                        _chipGroup<PropertyCategory>(
+                          items: [
+                            PropertyCategory.residential,
+                            PropertyCategory.commercial,
+                            PropertyCategory.plot,
+                          ],
+                          selected: _filter.category, // null = no filter, nothing highlighted
+                          label: (c) => c.value,
+                          onTap: (val) {
+                            setState(() {
+                              _filter.category = val; // null means "all categories"
+                              if (_filter.category == PropertyCategory.plot) {
+                                _filter.flatType = null;
+                                _filter.society = null;
+                                _filter.floorCategory = null;
+                                _filter.listingType = null; // plots have their own listing_type
+                                _societyCtrl.clear();
+                              }
+                              if (_filter.category != PropertyCategory.residential) {
+                                _filter.availableFor = null;
+                              }
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 4),
+                      ],
 
-                      // Advanced Filters (Collapsible Category, Subcategory, Listing Type) - MOVED TO TOP
+
+                      // Advanced Filters (User Type, Listing Type)
                       _buildCollapsibleSection(
                         title: 'ADVANCED FILTERS',
                         currentValue: null,
@@ -556,34 +586,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                               },
                             ),
                             
-                            if (showSubcategory) ...[
-                              _sectionHeader('SUBCATEGORY'),
-                              _chipGroup<PropertyCategory>(
-                                items: [
-                                  PropertyCategory.residential,
-                                  PropertyCategory.commercial,
-                                  PropertyCategory.plot,
-                                ],
-                                selected: _filter.category, // null = no filter, nothing highlighted
-                                label: (c) => c.value,
-                                onTap: (val) {
-                                  setState(() {
-                                    _filter.category = val; // null means "all categories"
-                                    if (_filter.category == PropertyCategory.plot) {
-                                      _filter.flatType = null;
-                                      _filter.society = null;
-                                      _filter.floorCategory = null;
-                                      _filter.listingType = null; // plots have their own listing_type
-                                      _societyCtrl.clear();
-                                    }
-                                    if (_filter.category != PropertyCategory.residential) {
-                                      _filter.availableFor = null;
-                                    }
-                                  });
-                                },
-                              ),
-                            ],
-
                             if (showListingType) ...[
                               _sectionHeader('LISTING TYPE'),
                               _chipGroup<ListingType>(

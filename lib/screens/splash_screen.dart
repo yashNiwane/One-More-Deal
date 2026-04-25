@@ -166,7 +166,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   letterSpacing: 0.8,
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 18),
+
+              Image.asset(
+                'assets/images/makeInIndiaLogog.png',
+                width: 150,
+                fit: BoxFit.contain,
+              ),
+
+              const SizedBox(height: 28),
               
               if (_hasError) ...[
                 Text(
